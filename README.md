@@ -31,8 +31,8 @@ Coinflict is a C++ desktop application for managing and analyzing personal finan
 - C++17 or newer  
 - [CMake](https://cmake.org/) ≥ 3.10  
 - [GLFW](https://www.glfw.org/)  
-- [ImGui](https://github.com/ocornut/imgui) (included in `lib/`)  
-- [ImPlot](https://github.com/epezent/implot) (included in `lib/`)  
+- [ImGui](https://github.com/ocornut/imgui) (included in `external/`)  
+- [ImPlot](https://github.com/epezent/implot) (included in `external/`)  
 
 ### Build Instructions
 ```bash
