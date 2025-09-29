@@ -21,9 +21,9 @@ set(IMGUI_FILE_DIALOG_DIR ${EXTERNAL_DIR}/ImGuiFileDialog)
 
 # Sources
 set(SOURCES
-    main.cpp
-    lib/db/db.cpp
-    lib/parser/parser.cpp
+    ../app/main.cpp
+    ../app/lib/db/db.cpp
+    ../app/lib/parser/parser.cpp
     ${IMGUI_DIR}/imgui.cpp
     ${IMGUI_DIR}/imgui_draw.cpp
     ${IMGUI_DIR}/imgui_tables.cpp
