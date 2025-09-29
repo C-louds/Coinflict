@@ -1,0 +1,19 @@
+# TODO
+--- 
+
+- [ ] Add the Date Picker/ Make a custome one if necessary.
+- [ ] Make The Layout better.
+- [ ] Add Icons.
+- [ ] Do something about the graphs.
+- [ ] Add the balance display.
+- [ ] Make the UI better(try the Color-Pallet)
+- [ ] Add more analysis to the Analytics Page.
+- [ ] Add the "Ease of Life" features.
+- [ ] Make DB more Dynamic.
+- [ ] Optimize DB.
+- [ ] Upgrade the Parser(It is just a kind-of hardcoded rn).
+- [ ] Multi-Wallets adaptive.
+- [ ] Encryption maybe??
+- [ ] Multi-Accounts handeling.
+- [ ] Insights.
+- [ ] Optimize Overall App.

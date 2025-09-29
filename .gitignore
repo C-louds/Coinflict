@@ -1,0 +1,34 @@
+# Build directories
+build/
+
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# IDE/editor files
+.vscode/
+.idea/
+*.swp
+
+# Environment / secrets
+.env
+.env.*
+
+# Logs
+*.log
+
+# CMake / Make
+CMakeFiles/
+CMakeCache.txt
+Makefile
+cmake_install.cmake
+*.cmake
+*.o
+*.a
+*.so
+*.dll
+*.exe
+
+#zips
+*.zip

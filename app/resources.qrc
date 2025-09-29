@@ -1,0 +1,9 @@
+<RCC>
+    <qresource prefix="/">
+        <file>lib/ui/Main.qml</file>
+        <file>lib/ui/DashboardPage.qml</file>
+        <file>lib/ui/TransactionsPage.qml</file>
+        <file>lib/ui/AnalyticsPage.qml</file>
+        <file>lib/ui/components/Card.qml</file>
+    </qresource>
+</RCC>

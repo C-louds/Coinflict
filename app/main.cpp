@@ -1,0 +1,1278 @@
+#include <iostream>
+#include <vector>
+#include <string>
+#include <cmath>
+#include <chrono>
+#include <numeric>
+#include <unordered_map>
+#include <algorithm>
+#include <GLFW/glfw3.h>
+#include <imgui.h>
+#include <implot.h>
+#include "backends/imgui_impl_glfw.h"
+#include "backends/imgui_impl_opengl3.h"
+#include "../external/ImGuiFileDialog/ImGuiFileDialog.h"
+
+/// DB importttt
+#include "lib/db/db.h"
+
+#include "lib/parser/parser.h"
+
+
+enum class Page
+{
+    Dashboard,
+    Transactions,
+    Analytics,
+};
+
+struct AppState
+{
+    // Dashboard Page
+    bool dashboardTransactionsLoaded = false;
+    std::vector<Transaction> dashboardTransctions;
+    double totalSpent = 0.0;
+    double spentThisMonth = 0.0;
+    double spentLastMonth = 0.0;
+    float comparedToLastMonth = 0;
+    double balance = 0.0;
+    std::vector<Transaction> pendingTransactions;
+    bool isPDFparsed = false;
+
+    // Transactions Page
+    bool transactionsLoaded = false;
+    std::vector<Transaction> transactions;
+    std::vector<Transaction> searchTransactions;
+
+    // Analytics Page
+    bool analyticsTransactionsLoaded = false;
+    std::vector<Transaction> analyticsTransactions;
+    std::set<std::string> categories;
+    std::vector<int> months; // Ik there are only 12 but this vector includes years too that's why. DONT PREJUDICE.
+    std::map<int, std::unordered_map<std::string, double>> monthlySpendings;
+
+    std::string dbError = "Unknown Error xD";
+
+    // FORCE RELOAD, LAZY SHIT
+    void forceReloadAllData()
+    {
+        dashboardTransactionsLoaded = false;
+        transactionsLoaded = false;
+        analyticsTransactionsLoaded = false;
+
+        // Clear existing data
+        dashboardTransctions.clear();
+        transactions.clear();
+        analyticsTransactions.clear();
+        monthlySpendings.clear();
+        categories.clear();
+        months.clear();
+    }
+};
+
+int getMonthYearInt()
+{
+    auto now = std::chrono::system_clock::now();
+    std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+    std::tm *localTime = std::localtime(&now_c);
+
+    int year = localTime->tm_year + 1900;
+    int month = localTime->tm_mon + 1;
+
+    // Always multiply month by 10000 and then adjust for single-digit months
+    if (month < 10)
+    {
+        return month * 10000 + year; // single-digit month, 1 -> 10000
+    }
+    else
+    {
+        return month * 10000 + year; // double-digit month, 11 -> 110000 + year
+    }
+}
+
+void loadDashboardData(AppState &state)
+{
+    if (!state.dashboardTransactionsLoaded)
+    {
+        state.dashboardTransctions.clear();
+        state.totalSpent = std::stod(getTotalAmountSpentFromDB());
+        // state.spentLastMonth = state.totalSpent; // Temporaryyyyyy Dont fuckin forget dumbass!!!!! After you get done with the parser. Update: Got done with Parser now, gotta get the fricking data.
+
+        int thisMonth = getMonthYearInt();
+        int lastMonth = ((thisMonth / 10000 + 11) % 12) * 10000 + (thisMonth % 10000 - (thisMonth / 10000 == 1 ? 1 : 0)); // TEMP FIX Because the map only contains the month if there is a txn in db for it. and dont worry about the 10000, you'll get it if you bother to see the values.
+        std::cout << lastMonth << std::endl;
+
+        if (!state.monthlySpendings.count(thisMonth))
+
+            for (auto &[month, catMap] : state.monthlySpendings)
+            {
+                if (month == thisMonth)
+                {
+                    for (auto &[cat, amt] : catMap)
+                    {
+                        state.spentThisMonth += amt;
+                        std::cout << "This Month" << state.spentThisMonth << std::endl;
+                    }
+                }
+                else if (month == lastMonth)
+                {
+                    for (auto &[cat, amt] : catMap)
+                    {
+                        state.spentLastMonth += amt;
+                        std::cout << "Last Month" << amt << std::endl;
+                    }
+                }
+            }
+
+        state.comparedToLastMonth = (state.spentThisMonth == 0 || state.spentLastMonth == 0) ? state.spentLastMonth : (state.spentThisMonth / state.spentLastMonth) * 100;
+        state.dashboardTransactionsLoaded = true;
+    }
+}
+
+void loadTransactionsData(AppState &state)
+{
+    if (!state.transactionsLoaded)
+    {
+        state.transactions.clear();
+        state.transactions = listTransactions();
+        state.transactionsLoaded = true;
+    }
+}
+
+void loadAnalyticsData(AppState &state)
+{
+    if (!state.analyticsTransactionsLoaded)
+    {
+        // Clear previous data BEFORE loading new data
+        state.analyticsTransactions.clear();
+        state.monthlySpendings.clear();
+        state.months.clear();
+        state.categories.clear();
+
+        state.analyticsTransactions = listTransactions();
+        state.monthlySpendings = getMonthlySpendings();
+
+        for (auto &[month, catMap] : state.monthlySpendings)
+        {
+            for (auto &[cat, amt] : catMap)
+            {
+                state.categories.insert(cat);
+            }
+
+            state.months.push_back(month);
+        }
+
+        state.analyticsTransactionsLoaded = true;
+    }
+}
+
+// I know, will do it later, and make a single func, 2:52AM rn not doing it.
+bool validTransactions(std::vector<Transaction> &Txns)
+{
+    for (auto &t : Txns)
+    {
+        if (t.amount == 0 || t.method == Transaction::Method::NOTSET || t.method == Transaction::Method::COUNT || t.type == Transaction::TransactionType::NOTSET)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool validTransaction(Transaction &t)
+{
+
+    if (t.amount == 0 || t.method == Transaction::Method::NOTSET || t.method == Transaction::Method::COUNT || t.type == Transaction::TransactionType::NOTSET)
+        return false;
+
+    return true;
+}
+
+void SetupImGuiStyle()
+{
+    // Future Dark style by rewrking from ImThemes
+    ImGuiStyle &style = ImGui::GetStyle();
+
+    style.Alpha = 1.0f;
+    style.DisabledAlpha = 1.0f;
+    style.WindowPadding = ImVec2(12.0f, 12.0f);
+    style.WindowRounding = 0.0f;
+    style.WindowBorderSize = 0.0f;
+    style.WindowMinSize = ImVec2(20.0f, 20.0f);
+    style.WindowTitleAlign = ImVec2(0.5f, 0.5f);
+    style.WindowMenuButtonPosition = ImGuiDir_None;
+    style.ChildRounding = 0.0f;
+    style.ChildBorderSize = 1.0f;
+    style.PopupRounding = 0.0f;
+    style.PopupBorderSize = 1.0f;
+    style.FramePadding = ImVec2(6.0f, 6.0f);
+    style.FrameRounding = 0.0f;
+    style.FrameBorderSize = 0.0f;
+    style.ItemSpacing = ImVec2(12.0f, 6.0f);
+    style.ItemInnerSpacing = ImVec2(6.0f, 3.0f);
+    style.CellPadding = ImVec2(12.0f, 6.0f);
+    style.IndentSpacing = 20.0f;
+    style.ColumnsMinSpacing = 6.0f;
+    style.ScrollbarSize = 12.0f;
+    style.ScrollbarRounding = 0.0f;
+    style.GrabMinSize = 12.0f;
+    style.GrabRounding = 0.0f;
+    style.TabRounding = 0.0f;
+    style.TabBorderSize = 0.0f;
+    // style.TabMinWidthForCloseButton = 0.0f;
+    style.ColorButtonPosition = ImGuiDir_Right;
+    style.ButtonTextAlign = ImVec2(0.5f, 0.5f);
+    style.SelectableTextAlign = ImVec2(0.0f, 0.0f);
+
+    style.Colors[ImGuiCol_Text] = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+    style.Colors[ImGuiCol_TextDisabled] = ImVec4(0.2745098173618317f, 0.3176470696926117f, 0.4509803950786591f, 1.0f);
+    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.0784313753247261f, 0.08627451211214066f, 0.1019607856869698f, 1.0f);
+    style.Colors[ImGuiCol_ChildBg] = ImVec4(0.0784313753247261f, 0.08627451211214066f, 0.1019607856869698f, 1.0f);
+    style.Colors[ImGuiCol_PopupBg] = ImVec4(0.0784313753247261f, 0.08627451211214066f, 0.1019607856869698f, 1.0f);
+    style.Colors[ImGuiCol_Border] = ImVec4(0.1568627506494522f, 0.168627455830574f, 0.1921568661928177f, 1.0f);
+    style.Colors[ImGuiCol_BorderShadow] = ImVec4(0.0784313753247261f, 0.08627451211214066f, 0.1019607856869698f, 1.0f);
+    style.Colors[ImGuiCol_FrameBg] = ImVec4(0.1176470592617989f, 0.1333333402872086f, 0.1490196138620377f, 1.0f);
+    style.Colors[ImGuiCol_FrameBgHovered] = ImVec4(0.1568627506494522f, 0.168627455830574f, 0.1921568661928177f, 1.0f);
+    style.Colors[ImGuiCol_FrameBgActive] = ImVec4(0.2352941185235977f, 0.2156862765550613f, 0.5960784554481506f, 1.0f);
+    style.Colors[ImGuiCol_TitleBg] = ImVec4(0.0470588244497776f, 0.05490196123719215f, 0.07058823853731155f, 1.0f);
+    style.Colors[ImGuiCol_TitleBgActive] = ImVec4(0.0470588244497776f, 0.05490196123719215f, 0.07058823853731155f, 1.0f);
+    style.Colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.0784313753247261f, 0.08627451211214066f, 0.1019607856869698f, 1.0f);
+    style.Colors[ImGuiCol_MenuBarBg] = ImVec4(0.09803921729326248f, 0.105882354080677f, 0.1215686276555061f, 1.0f);
+    style.Colors[ImGuiCol_ScrollbarBg] = ImVec4(0.0470588244497776f, 0.05490196123719215f, 0.07058823853731155f, 1.0f);
+    style.Colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.1176470592617989f, 0.1333333402872086f, 0.1490196138620377f, 1.0f);
+    style.Colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.1568627506494522f, 0.168627455830574f, 0.1921568661928177f, 1.0f);
+    style.Colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.1176470592617989f, 0.1333333402872086f, 0.1490196138620377f, 1.0f);
+    style.Colors[ImGuiCol_CheckMark] = ImVec4(0.4980392158031464f, 0.5137255191802979f, 1.0f, 1.0f);
+    style.Colors[ImGuiCol_SliderGrab] = ImVec4(0.4980392158031464f, 0.5137255191802979f, 1.0f, 1.0f);
+    style.Colors[ImGuiCol_SliderGrabActive] = ImVec4(0.5372549295425415f, 0.5529412031173706f, 1.0f, 1.0f);
+    style.Colors[ImGuiCol_Button] = ImVec4(0.1176470592617989f, 0.1333333402872086f, 0.1490196138620377f, 0.0f);
+    style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.196078434586525f, 0.1764705926179886f, 0.5450980663299561f, 0.8f);
+    style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.2352941185235977f, 0.2156862765550613f, 0.5960784554481506f, 0.8f);
+    style.Colors[ImGuiCol_Header] = ImVec4(0.1176470592617989f, 0.1333333402872086f, 0.1490196138620377f, 1.0f);
+    style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.196078434586525f, 0.1764705926179886f, 0.5450980663299561f, 1.0f);
+    style.Colors[ImGuiCol_HeaderActive] = ImVec4(0.2352941185235977f, 0.2156862765550613f, 0.5960784554481506f, 1.0f);
+    style.Colors[ImGuiCol_Separator] = ImVec4(0.1568627506494522f, 0.1843137294054031f, 0.250980406999588f, 1.0f);
+    style.Colors[ImGuiCol_SeparatorHovered] = ImVec4(0.1568627506494522f, 0.1843137294054031f, 0.250980406999588f, 1.0f);
+    style.Colors[ImGuiCol_SeparatorActive] = ImVec4(0.1568627506494522f, 0.1843137294054031f, 0.250980406999588f, 1.0f);
+    style.Colors[ImGuiCol_ResizeGrip] = ImVec4(0.1176470592617989f, 0.1333333402872086f, 0.1490196138620377f, 1.0f);
+    style.Colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.196078434586525f, 0.1764705926179886f, 0.5450980663299561f, 1.0f);
+    style.Colors[ImGuiCol_ResizeGripActive] = ImVec4(0.2352941185235977f, 0.2156862765550613f, 0.5960784554481506f, 1.0f);
+    style.Colors[ImGuiCol_Tab] = ImVec4(0.0470588244497776f, 0.05490196123719215f, 0.07058823853731155f, 1.0f);
+    style.Colors[ImGuiCol_TabHovered] = ImVec4(0.1176470592617989f, 0.1333333402872086f, 0.1490196138620377f, 1.0f);
+    style.Colors[ImGuiCol_TabActive] = ImVec4(0.09803921729326248f, 0.105882354080677f, 0.1215686276555061f, 1.0f);
+    style.Colors[ImGuiCol_TabUnfocused] = ImVec4(0.0470588244497776f, 0.05490196123719215f, 0.07058823853731155f, 1.0f);
+    style.Colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.0784313753247261f, 0.08627451211214066f, 0.1019607856869698f, 1.0f);
+    style.Colors[ImGuiCol_PlotLines] = ImVec4(0.5215686559677124f, 0.6000000238418579f, 0.7019608020782471f, 1.0f);
+    style.Colors[ImGuiCol_PlotLinesHovered] = ImVec4(0.03921568766236305f, 0.9803921580314636f, 0.9803921580314636f, 1.0f);
+    style.Colors[ImGuiCol_PlotHistogram] = ImVec4(1.0f, 0.2901960909366608f, 0.5960784554481506f, 1.0f);
+    style.Colors[ImGuiCol_PlotHistogramHovered] = ImVec4(0.9960784316062927f, 0.4745098054409027f, 0.6980392336845398f, 1.0f);
+    style.Colors[ImGuiCol_TableHeaderBg] = ImVec4(0.0470588244497776f, 0.05490196123719215f, 0.07058823853731155f, 1.0f);
+    style.Colors[ImGuiCol_TableBorderStrong] = ImVec4(0.0470588244497776f, 0.05490196123719215f, 0.07058823853731155f, 1.0f);
+    style.Colors[ImGuiCol_TableBorderLight] = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
+    style.Colors[ImGuiCol_TableRowBg] = ImVec4(0.1176470592617989f, 0.1333333402872086f, 0.1490196138620377f, 1.0f);
+    style.Colors[ImGuiCol_TableRowBgAlt] = ImVec4(0.09803921729326248f, 0.105882354080677f, 0.1215686276555061f, 1.0f);
+    style.Colors[ImGuiCol_TextSelectedBg] = ImVec4(0.2352941185235977f, 0.2156862765550613f, 0.5960784554481506f, 1.0f);
+    style.Colors[ImGuiCol_DragDropTarget] = ImVec4(0.4980392158031464f, 0.5137255191802979f, 1.0f, 1.0f);
+    style.Colors[ImGuiCol_NavHighlight] = ImVec4(0.4980392158031464f, 0.5137255191802979f, 1.0f, 1.0f);
+    style.Colors[ImGuiCol_NavWindowingHighlight] = ImVec4(0.4980392158031464f, 0.5137255191802979f, 1.0f, 1.0f);
+    style.Colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.196078434586525f, 0.1764705926179886f, 0.5450980663299561f, 0.501960813999176f);
+    style.Colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.196078434586525f, 0.1764705926179886f, 0.5450980663299561f, 0.501960813999176f);
+}
+
+void Card(const char *title, double val, const char *postValTxt = "")
+{
+    ImGui::BeginChild(title, ImVec2(250, 100), true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize);
+
+    ImGui::Text("%s", title);
+    ImGui::Separator();
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10);
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.2f, 0.2f, 1.0f));
+    ImGui::Text("%.2f", val);
+    ImGui::SameLine();
+    ImGui::Text("%s", postValTxt);
+    ImGui::PopStyleColor();
+    ImGui::EndChild();
+}
+
+bool dashboardOpened = true;
+int windowSizeX = 1920;
+int windowSizeY = 1080;
+Page currPage = Page::Dashboard; // Spawn Point
+
+int main()
+{
+    dotenv::init();
+
+    std::string host = std::getenv("DB_HOST");
+    std::string dbName = std::getenv("DB_NAME");
+    std::string user = std::getenv("DB_USER");
+    std::string password = std::getenv("DB_PASSWORD");
+
+
+    PGconn *conn = connectDB(host, dbName, user, password);
+    AppState state;
+
+    loadAnalyticsData(state);
+    loadDashboardData(state);
+    loadTransactionsData(state);
+
+    // Yea what?? Just creating a window.
+    if (!glfwInit())
+        return -1;
+    GLFWwindow *window = glfwCreateWindow(windowSizeX, windowSizeY, "Financial Tracker", nullptr, nullptr);
+    if (!window)
+        return -1;
+    glfwMakeContextCurrent(window);
+    glfwSwapInterval(1);
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImPlot::CreateContext();
+
+    SetupImGuiStyle();
+
+    float fontSize = 18.0f;
+    ImGuiIO &io = ImGui::GetIO();
+    ImFont *poppinsLight = io.Fonts->AddFontFromFileTTF("lib/assets/Manrope-Regular.ttf", fontSize);
+    // io.Fonts->Build();
+    io.FontDefault = poppinsLight;
+    (void)io;
+    // ImGui::StyleColorsDark();
+
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init("#version 130");
+
+    while (!glfwWindowShouldClose(window))
+    {
+        glfwPollEvents();
+
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        ImGui::SetNextWindowPos(ImVec2(0, 0));
+        ImGui::SetNextWindowSize(io.DisplaySize);
+
+        ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoTitleBar |
+                                        ImGuiWindowFlags_NoResize |
+                                        ImGuiWindowFlags_NoMove |
+                                        ImGuiWindowFlags_NoCollapse |
+                                        ImGuiWindowFlags_NoBringToFrontOnFocus |
+                                        ImGuiWindowFlags_NoNavFocus;
+
+        ImGui::Begin("Home Menu", &dashboardOpened, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove);
+
+        const char *tabs[] = {"Dashboard", "Transactions", "Analytics"};
+        float tab_width = ImGui::GetContentRegionAvail().x / 3;
+
+        for (int i = 0; i < 3; i++)
+        {
+            if (i > 0)
+                ImGui::SameLine();
+            if (ImGui::Button(tabs[i], ImVec2(tab_width, 0)))
+            {
+                currPage = static_cast<Page>(i); // Update current page
+            }
+        }
+
+        /*ImGuiStyle &style = ImGui::GetStyle();
+        float window_width = ImGui::GetContentRegionAvail().x;
+        int num_tabs = 3; // Dashboard, Transactions, Analytics
+        float tab_width = window_width / num_tabs;
+
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, style.ItemSpacing.y));
+
+        if (ImGui::BeginTabBar("MainTabs"))
+        {
+            if (ImGui::BeginTabItem("Dashboard"))
+            {
+                if (currPage != Page::Dashboard)
+                {
+                    currPage = Page::Dashboard;
+                }
+                ImGui::EndTabItem();
+            }
+            if (ImGui::BeginTabItem("Transactions"))
+            {
+                if (currPage != Page::Transactions)
+                {
+                    currPage = Page::Transactions;
+                }
+                ImGui::EndTabItem();
+            }
+            if (ImGui::BeginTabItem("Analytics"))
+            {
+                if (currPage != Page::Analytics)
+                {
+                    currPage = Page::Analytics;
+                }
+                ImGui::EndTabItem();
+            }
+            ImGui::EndTabBar();
+        }
+        ImGui::PopStyleVar(); */
+
+        switch (currPage)
+        {
+        case Page::Dashboard:
+        {
+            loadDashboardData(state);
+
+            // --- DASHBOARD WINDOW ---
+            ImGui::BeginGroup();
+
+            Card("Total Spent", state.totalSpent);
+            ImGui::SameLine();
+            Card("This Month", state.spentThisMonth);
+            ImGui::SameLine();
+            Card("Balance", state.balance);
+            ImGui::SameLine();
+            Card("Compared To Last Month", state.comparedToLastMonth, "%");
+            ImGui::EndGroup();
+            // Summary row
+            ImGui::Text("Last few transaction");
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            // Expenses Table - Use transactions data for dashboard too
+            loadTransactionsData(state); // Ensure we have transactions data
+            ImGui::Text("Expenses");
+            if (ImGui::BeginTable("ExpensesTable", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+            {
+                ImGui::TableSetupColumn("Category");
+                ImGui::TableSetupColumn("Amount");
+                ImGui::TableSetupColumn("Date");
+                ImGui::TableHeadersRow();
+
+                for (int i = 0; i < 20; i++)
+                {
+                    auto txn = state.transactions[i];
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("%.2f", txn.amount);
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("%s", txn.category.c_str());
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("%s", txn.date.c_str());
+                }
+                ImGui::EndTable();
+            }
+
+            ImGui::Separator();
+
+            // THE PDF SELECTOR FOR THE USER.  (do it manually later instead of the dependencies)
+
+            if (ImGui::Button("Upload Statement"))
+            {
+                IGFD::FileDialogConfig config;
+                config.path = ".";
+                // Open the dialog (key, title, filter, path)
+                ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose a PDF", ".pdf", config);
+                state.pendingTransactions.clear();
+            }
+
+            if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
+            {
+                // action if OK
+                if (ImGuiFileDialog::Instance()->IsOk())
+                {
+                    std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
+                    // Do something with filePath
+                    std::cout << "User selected: " << filePath << std::endl;
+                    state.pendingTransactions = parsePDF(filePath);
+                    state.isPDFparsed = true;
+                }
+                ImGuiFileDialog::Instance()->Close();
+            }
+
+            std::vector<std::string> catVec(state.categories.begin(), state.categories.end());
+            if (state.isPDFparsed)
+            {
+                // TODO: ADD DEFAULT MESSAGES LIKE NO TRANSACTIONS FOUND IN PDF ETC ETC................
+                if (ImGui::BeginTable("ParsedTransactions", 6))
+                {
+                    ImGui::TableSetupColumn("Category");
+                    ImGui::TableSetupColumn("Amount");
+                    ImGui::TableSetupColumn("Date");
+                    ImGui::TableSetupColumn("Label");
+                    ImGui::TableSetupColumn("Method");
+                    ImGui::TableSetupColumn("Select");
+
+                    ImGui::TableHeadersRow();
+
+                    static std::vector<uint8_t> rowSelected;
+                    static std::vector<bool> openNewCategoryPopup;
+                    static std::string multiSelectCategory;
+                    if (rowSelected.size() != state.pendingTransactions.size())
+                        rowSelected.assign(state.pendingTransactions.size(), 0);
+                    if (openNewCategoryPopup.size() != state.pendingTransactions.size())
+                        openNewCategoryPopup.assign(state.pendingTransactions.size(), false);
+                    for (size_t i = 0; i < state.pendingTransactions.size(); i++)
+                    {
+                        Transaction &t = state.pendingTransactions[i];
+
+                        ImGui::TableNextRow();
+                        ImVec4 amountColor = (t.type == Transaction::TransactionType::Expense) ? ImVec4(1.0f, 0.0f, 0.0f, 1.0f) : ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
+                        ImGui::TableSetColumnIndex(1);
+                        ImGui::TextColored(amountColor, "%.2f", t.amount);
+
+                        ImGui::TableSetColumnIndex(0);
+
+                        std::string comboId = "##Category" + std::to_string(i);
+                        std::string popupId = "##NewCategory" + std::to_string(i);
+                        std::string newCatLabel = "+New";
+                        if (ImGui::BeginCombo(comboId.c_str(), t.category.c_str()))
+                        {
+                            for (int j = 0; j < state.categories.size(); j++)
+                            {
+                                const char *c = catVec[j].c_str();
+                                bool isSelected = (t.category == c);
+                                if (ImGui::Selectable(c, isSelected))
+                                {
+                                    t.category = std::string(c);
+
+                                    if (rowSelected[i])
+                                    {
+                                        for (size_t k = 0; k < state.pendingTransactions.size(); k++)
+                                        {
+                                            if (k != i && rowSelected[k])
+                                            {
+                                                state.pendingTransactions[k].category = t.category;
+                                            }
+                                        }
+                                    }
+                                }
+                                if (isSelected)
+                                {
+                                    ImGui::SetItemDefaultFocus();
+                                }
+                            }
+
+                            if (ImGui::Selectable(newCatLabel.c_str()))
+                            {
+                                openNewCategoryPopup[i] = true;
+
+                                std::cout << "POP UP" << std::endl;
+                            }
+                            ImGui::EndCombo();
+                        }
+                        if (openNewCategoryPopup[i])
+                        {
+                            ImGui::OpenPopup(popupId.c_str());
+                            openNewCategoryPopup[i] = false;
+                        }
+                        // POP UP CODE. TODO: MAKE IT MORE POPUP'ish
+                        if (ImGui::BeginPopupModal(popupId.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+                        {
+                            static char newCategoryBuf[64] = "";
+                            ImGui::InputText("Name", newCategoryBuf, IM_ARRAYSIZE(newCategoryBuf));
+                            if (ImGui::Button("Add"))
+                            {
+                                if (strlen(newCategoryBuf) > 0)
+                                {
+                                    state.categories.insert(newCategoryBuf);
+                                    t.category = newCategoryBuf; // assign to this transaction
+                                    newCategoryBuf[0] = '\0';
+                                    ImGui::CloseCurrentPopup();
+                                }
+                            }
+                            ImGui::SameLine();
+                            if (ImGui::Button("Cancel"))
+                            {
+                                newCategoryBuf[0] = '\0';
+                                ImGui::CloseCurrentPopup();
+                            }
+                            ImGui::EndPopup();
+                        }
+
+                        ImGui::TableSetColumnIndex(2);
+
+                        ImGui::Text("%s", t.date.c_str());
+
+                        ImGui::TableSetColumnIndex(3);
+
+                        static char buff[128];
+                        strncpy(buff, t.label.c_str(), sizeof(buff));
+                        if (ImGui::InputText(("##label" + std::to_string(i)).c_str(), buff, IM_ARRAYSIZE(buff)))
+                        {
+                            t.label = buff;
+                            if (rowSelected[i])
+                            {
+                                for (size_t j = 0; j < state.pendingTransactions.size(); j++)
+                                {
+                                    if (rowSelected[j] && i != j)
+                                    {
+                                        state.pendingTransactions[j].label = buff;
+                                    }
+                                }
+                            }
+                        }
+
+                        ImGui::TableSetColumnIndex(4);
+                        std::string comboLabel = "##Method" + std::to_string(i);
+                        if (ImGui::BeginCombo(comboLabel.c_str(), Transaction::toString(t.method).c_str()))
+                        {
+                            for (int j = 0; j < static_cast<int>(Transaction::Method::COUNT); j++)
+                            {
+                                Transaction::Method m = static_cast<Transaction::Method>(j);
+                                bool isSelected = (t.method == m);
+
+                                if (ImGui::Selectable(Transaction::toString(m).c_str(), isSelected))
+                                {
+
+                                    t.method = m;
+
+                                    if (rowSelected[i])
+                                    {
+                                        for (size_t j = 0; j < state.pendingTransactions.size(); j++)
+                                        {
+                                            if (rowSelected[j] && i != j)
+                                            {
+                                                state.pendingTransactions[j].method = t.method;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (isSelected)
+                                {
+                                    ImGui::SetItemDefaultFocus();
+                                }
+                            }
+                            ImGui::EndCombo();
+                        }
+
+                        // TODO: ADD EASE OF LIFE STUFF LIKE CLEAR BUTTON, ENTIRE COLUMN SELECTION ETC ETC......
+                        ImGui::TableSetColumnIndex(5);
+
+                        std::string checkboxId = "##checkbox" + std::to_string(i);
+                        if (ImGui::Checkbox(checkboxId.c_str(), (bool *)&rowSelected[i]))
+                        {
+                            std::cout << "Checkbox for row: " << i << " is checked." << (bool)rowSelected[i] << std::endl;
+                        }
+                    }
+
+                    ImGui::EndTable();
+                }
+                bool saveConfirmationPopup = false;
+                bool invalidTransactionPopup = false;
+                std::string confirmationPopupId = "ConfirmEdits##";
+                std::string invalidTxnsPopupId = "InvalidTxns##";
+                if (ImGui::Button("Save"))
+                {
+                    if (validTransactions(state.pendingTransactions))
+                    {
+                        saveConfirmationPopup = true;
+                    }
+                    else
+                    {
+                        invalidTransactionPopup = true;
+                    }
+                }
+                if (saveConfirmationPopup)
+                {
+                    ImGui::OpenPopup(confirmationPopupId.c_str());
+                    saveConfirmationPopup = false;
+                }
+                if (invalidTransactionPopup)
+                {
+                    ImGui::OpenPopup(invalidTxnsPopupId.c_str());
+                    invalidTransactionPopup = false;
+                }
+
+                if (ImGui::BeginPopupModal(confirmationPopupId.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+                {
+                    static bool confirmed = false;
+                    static bool closeConfirmationPopup = false;
+                    static bool actionResultPopup = false;
+                    static std::string actionResultPopupId = "##TxnResult";
+                    static std::vector<bool> txnInsert;
+                    static bool allSuccess = false;
+
+                    if (!confirmed)
+                    {
+                        ImGui::Text("Double Check");
+                        if (ImGui::BeginTable("ConfirmationTable", 5))
+                        {
+                            ImGui::TableSetupColumn("Category");
+                            ImGui::TableSetupColumn("Amount");
+                            ImGui::TableSetupColumn("Date");
+                            ImGui::TableSetupColumn("Label");
+                            ImGui::TableSetupColumn("Method");
+
+                            ImGui::TableHeadersRow();
+
+                            for (auto &t : state.pendingTransactions)
+                            {
+
+                                ImGui::TableNextRow();
+
+                                ImGui::TableSetColumnIndex(0);
+                                ImGui::Text("%s", t.category.c_str());
+
+                                ImGui::TableSetColumnIndex(1);
+                                ImVec4 amountColor = (t.type == Transaction::TransactionType::Expense) ? ImVec4(1.0f, 0.0f, 0.0f, 1.0f) : ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
+                                ImGui::TextColored(amountColor, "%.2f", t.amount);
+
+                                ImGui::TableSetColumnIndex(2);
+                                ImGui::Text("%s", t.date.c_str());
+
+                                ImGui::TableSetColumnIndex(3);
+                                ImGui::Text("%s", t.label.c_str());
+
+                                ImGui::TableSetColumnIndex(4);
+                                ImGui::Text("%s", Transaction::toString(t.method).c_str());
+                            }
+                            ImGui::EndTable();
+                        }
+                        if (ImGui::Button("Confirm"))
+                        {
+                            confirmed = true;
+                            txnInsert.clear();
+                            txnInsert.resize(state.pendingTransactions.size(), false);
+
+                            std::cout << "--------------------Saving To DB------------------------" << std::endl;
+                            for (size_t i = 0; i < state.pendingTransactions.size(); i++)
+                            {
+                                Transaction &t = state.pendingTransactions[i];
+                                txnInsert[i] = addTransactionToDB(t.amount, t.label, t.category, Transaction::toString(t.method), t.type, t.date);
+                            }
+
+                            allSuccess = std::all_of(txnInsert.begin(), txnInsert.end(), [](bool b)
+                                                     { return b; });
+                            actionResultPopup = true;
+                        }
+                        ImGui::SameLine();
+                        if (ImGui::Button("Cancel"))
+                        {
+                            confirmed = false;
+                            ImGui::CloseCurrentPopup();
+                        }
+                    }
+
+                    if (actionResultPopup)
+                    {
+                        ImGui::OpenPopup(actionResultPopupId.c_str());
+                        actionResultPopup = false;
+                    }
+
+                    // The POP UP THAT SHOWS THE RESULT OF THE QUERY.
+                    if (ImGui::BeginPopupModal(actionResultPopupId.c_str()))
+                    {
+                        if (allSuccess)
+                        {
+                            ImGui::TextColored(ImVec4(0, 1, 0, 1), "Transactions added successfully!");
+                        }
+                        else
+                        {
+                            ImGui::TextColored(ImVec4(1, 0, 0, 1), "Error: Transactions could not be added.");
+                        }
+
+                        if (ImGui::Button("Okay"))
+                        {
+                            if (allSuccess)
+                            {
+                                state.pendingTransactions.clear();
+                                state.isPDFparsed = false;
+
+                                // FORCE RELOAD ALL DATA
+                                state.forceReloadAllData();
+                            }
+
+                            confirmed = false;
+                            closeConfirmationPopup = true;
+                            ImGui::CloseCurrentPopup();
+                        }
+                        ImGui::EndPopup();
+                    }
+
+                    if (closeConfirmationPopup)
+                    {
+                        ImGui::CloseCurrentPopup();
+                        closeConfirmationPopup = false;
+                    }
+
+                    ImGui::EndPopup();
+                }
+
+                if (ImGui::BeginPopupModal(invalidTxnsPopupId.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+                {
+                    ImGui::TextColored(ImVec4(1, 0, 0, 1), "Error: One or more transactions has invalid properties.");
+                    if (ImGui::Button("Okay"))
+                    {
+                        ImGui::CloseCurrentPopup();
+                    }
+                    ImGui::EndPopup();
+                }
+            }
+
+            static bool newTxnPopup = false;
+            std::string newTxnpopupId = "##NewTxn";
+            ImGui::SameLine();
+            if (!state.isPDFparsed)
+            {
+                if (ImGui::Button("New Transaction"))
+                {
+                    newTxnPopup = true;
+                }
+            }
+            if (newTxnPopup)
+            {
+                ImGui::OpenPopup(newTxnpopupId.c_str());
+                newTxnPopup = false;
+            }
+
+            static Transaction t;
+            bool addNewTxn = false;
+            static double amt = 0;
+            static char labelBuf[128] = "";
+            tm txnDate = {};
+            static std::string actionResultPopupId = "##TxnResult";
+            static std::string invalidTxnsPopupId = "##InvalidTxn";
+            if (ImGui::BeginPopupModal(newTxnpopupId.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+            {
+                // ASK FOR amount, category, label, method, type(income/expense), date(default today)
+
+                ImGui::Text("Amount: ");
+                if (ImGui::InputDouble("##amt", &amt, 0.0, 0.0, "%.2f"))
+                {
+                    t.amount = amt;
+                    std::cout << "New Amount: " << amt << std::endl;
+                }
+
+                ImGui::Text("Category: ");
+                std::string popupId = "##NewCategory";
+                std::string newCatLabel = "+New";
+                static bool newCatPopup = false;
+
+                if (ImGui::BeginCombo("##NewCategory", t.category.c_str()))
+                {
+                    for (int i = 0; i < state.categories.size(); i++)
+                    {
+                        const char *c = catVec[i].c_str();
+                        bool isCatSelected = (t.category == c);
+
+                        if (ImGui::Selectable(c, isCatSelected))
+                        {
+                            t.category = std::string(c);
+                            std::cout << c << " " << t.category << std::endl;
+                        }
+
+                        if (isCatSelected)
+                        {
+                            ImGui::SetItemDefaultFocus();
+                        }
+                    }
+
+                    if (ImGui::Selectable(newCatLabel.c_str()))
+                    {
+                        newCatPopup = true;
+                        std::cout << "POP UP" << std::endl;
+                    }
+                    ImGui::EndCombo();
+                }
+                if (newCatPopup)
+                {
+                    ImGui::OpenPopup(popupId.c_str());
+                    newCatPopup = false;
+                }
+                // POP UP CODE. TODO: MAKE IT MORE POPUP'ish
+                if (ImGui::BeginPopupModal(popupId.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+                {
+                    static char newCategoryBuf[64] = "";
+                    ImGui::InputText("##NewCat", newCategoryBuf, IM_ARRAYSIZE(newCategoryBuf));
+                    if (ImGui::Button("Add"))
+                    {
+                        if (strlen(newCategoryBuf) > 0)
+                        {
+                            state.categories.insert(newCategoryBuf);
+                            t.category = newCategoryBuf; // assign to this transaction
+                            newCategoryBuf[0] = '\0';
+                            ImGui::CloseCurrentPopup();
+                        }
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("Cancel"))
+                    {
+                        newCategoryBuf[0] = '\0';
+                        ImGui::CloseCurrentPopup();
+                    }
+                    ImGui::EndPopup();
+                }
+
+                ImGui::Text("Label: ");
+                if (ImGui::InputText("##label", labelBuf, IM_ARRAYSIZE(labelBuf)))
+                {
+                    std::cout << "New Label: " << labelBuf << std::endl;
+                }
+
+                ImGui::Text("Method: ");
+                if (ImGui::BeginCombo("##NewMethod", Transaction::toString(t.method).c_str()))
+                {
+
+                    for (size_t i = 0; i < static_cast<int>(Transaction::Method::COUNT); i++)
+                    {
+
+                        Transaction::Method m = static_cast<Transaction::Method>(i);
+                        bool isSelected = (m == t.method);
+
+                        if (ImGui::Selectable(Transaction::toString(m).c_str(), &isSelected))
+                        {
+                            t.method = m;
+                        }
+
+                        if (isSelected)
+                        {
+                            ImGui::SetItemDefaultFocus();
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+
+                ImGui::Text("Type: ");
+                if (ImGui::BeginCombo("##Type", Transaction::toString(t.type).c_str()))
+                {
+
+                    for (size_t i = 0; i < static_cast<int>(Transaction::TransactionType::COUNT); i++)
+                    {
+
+                        Transaction::TransactionType type = static_cast<Transaction::TransactionType>(i);
+                        bool isSelected = (t.type == type);
+
+                        if (ImGui::Selectable(Transaction::toString(type).c_str(), &isSelected))
+                        {
+                            t.type = type;
+                        }
+                        if (isSelected)
+                        {
+                            ImGui::SetItemDefaultFocus();
+                        }
+                    }
+
+                    ImGui::EndCombo();
+                }
+
+                /*ImGui::Text("Date: ");
+                if(ImGui::DatePicker("Select Date", txnDate)) {
+                    std::ostringstream oss;
+                    oss << std::put_time(&txnDate, "%d-%m-%Y");
+                    std::string strTxnDate = oss.str();
+
+                    std::cout << "txnDate: " << strTxnDate << std::endl;
+                } */
+
+                if (ImGui::Button("Save"))
+                {
+                    std::cout << t.amount << " " << Transaction::toString(t.method) << "  " << Transaction::toString(t.type) << std::endl;
+                    if (validTransaction(t))
+                    {
+                        addNewTxn = addTransactionToDB(t.amount, t.label, Transaction::toString(t.method), t.category, t.type);
+                        ImGui::OpenPopup(actionResultPopupId.c_str());
+
+                        if (addNewTxn)
+                        {
+                            std::cout << " Added new Transaction to DB!" << std::endl;
+                        }
+                        else
+                        {
+                            ImGui::OpenPopup(invalidTxnsPopupId.c_str());
+                        }
+                    }
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Cancel"))
+                {
+                    ImGui::CloseCurrentPopup();
+                }
+
+                if (ImGui::BeginPopupModal(actionResultPopupId.c_str()))
+                {
+                    if (addNewTxn)
+                    {
+                        ImGui::TextColored(ImVec4(0, 1, 0, 1), "Transactions added successfully!");
+                    }
+                    else
+                    {
+                        ImGui::TextColored(ImVec4(1, 0, 0, 1), "Error: Transactions could not be added.");
+                    }
+
+                    if (ImGui::Button("Okay"))
+                    {
+                        if (addNewTxn)
+                        {
+                            state.pendingTransactions.clear();
+
+                            // FORCE RELOAD ALL DATA
+                            state.forceReloadAllData();
+                        }
+
+                        ImGui::CloseCurrentPopup();
+                    }
+                    ImGui::EndPopup();
+                }
+
+                if (ImGui::BeginPopupModal(invalidTxnsPopupId.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+                {
+                    ImGui::TextColored(ImVec4(1, 0, 0, 1), "Error: Transaction has invalid properties.");
+                    if (ImGui::Button("Okay"))
+                    {
+                        ImGui::CloseCurrentPopup();
+                    }
+                    ImGui::EndPopup();
+                }
+                ImGui::EndPopup();
+            }
+
+            break;
+        }
+
+        case Page::Transactions:
+        {
+            // Ensure transactions data is loaded
+            loadTransactionsData(state);
+
+            ImGui::BeginTabBar("TransactionsBar");
+
+            if (ImGui::BeginTabItem("Recent Transactions"))
+            {
+
+                if (ImGui::BeginTable("RecentTransactions", 3))
+                {
+                    ImGui::TableSetupColumn("Category");
+                    ImGui::TableSetupColumn("Amount");
+                    ImGui::TableSetupColumn("Date");
+                    ImGui::TableHeadersRow();
+
+                    for (auto &t : state.transactions)
+                    {
+                        ImGui::TableNextRow();
+                        ImGui::TableSetColumnIndex(1);
+                        ImVec4 color = (t.type == Transaction::TransactionType::Expense) ? ImVec4(1.0f, 0.0f, 0.0f, 1.0f) : ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
+                        ImGui::TextColored(color, "%.2f", t.amount);
+                        ImGui::TableSetColumnIndex(0);
+                        ImGui::Text("%s", t.category.c_str());
+                        ImGui::TableSetColumnIndex(2);
+                        ImGui::Text("%s", t.date.c_str());
+                    }
+
+                    ImGui::EndTable();
+                }
+
+                ImGui::EndTabItem();
+            }
+            std::vector<Transaction> queryTxns;
+            float fullWidth = ImGui::GetContentRegionAvail().x;
+            float halfWidth = fullWidth * 0.5f;
+
+            if (ImGui::BeginTabItem("Search Transaction"))
+            {
+
+                static std::string properties[] = {"Amount", "Label", "Category", "Date", "Method", "Type"};
+                static std::string searchProp = "Label";
+                static char searchBuf[128];
+                static std::string searchVal;
+
+                ImGui::SetNextItemWidth(halfWidth);
+                if (ImGui::InputText("##searchTxns", searchBuf, sizeof(searchBuf)))
+                {
+                    searchVal = std::string(searchBuf);
+                }
+
+                ImGui::SameLine();
+                ImGui::SetNextItemWidth(halfWidth);
+                if (ImGui::BeginCombo("##searchBy", searchProp.c_str(), ImGuiComboFlags_PopupAlignLeft))
+                {
+
+                    for (size_t i = 0; i < IM_ARRAYSIZE(properties); i++)
+                    {
+                        const char *p = properties[i].c_str();
+                        bool isSelected = (p == searchProp);
+                        if (ImGui::Selectable(properties[i].c_str(), isSelected))
+                        {
+                            searchProp = p;
+                        }
+                        if (isSelected)
+                        {
+                            ImGui::SetItemDefaultFocus();
+                        }
+                    }
+
+                    ImGui::EndCombo();
+                }
+
+                if (ImGui::Button("Search"))
+                {
+                    state.searchTransactions = searchTransactions(searchProp, searchVal);
+                    std::cout << "Search for: " << searchVal << " in: " << searchProp << std::endl;
+                }
+
+                if (ImGui::BeginTable("##searchRes", 6))
+                {
+                    ImGui::TableSetupColumn("Category");
+                    ImGui::TableSetupColumn("Label");
+                    ImGui::TableSetupColumn("Amount");
+                    ImGui::TableSetupColumn("Method");
+                    ImGui::TableSetupColumn("Date");
+                    ImGui::TableSetupColumn("Type");
+
+                    ImGui::TableHeadersRow();
+
+                    for (auto &t : state.searchTransactions)
+                    {
+                        ImVec4 amtColor = (t.type == Transaction::TransactionType::Expense) ? ImVec4(1.0f, 0.0f, 0.0f, 1.0f) : ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
+
+                        ImGui::TableNextRow();
+
+                        ImGui::TableSetColumnIndex(0);
+                        ImGui::Text("%s", t.category.c_str());
+
+                        ImGui::TableSetColumnIndex(1);
+                        ImGui::Text("%s", t.label.c_str());
+
+                        ImGui::TableSetColumnIndex(2);
+                        ImGui::TextColored(amtColor, "%.2f", t.amount);
+
+                        ImGui::TableSetColumnIndex(3);
+                        ImGui::Text("%s", Transaction::toString(t.method).c_str());
+
+                        ImGui::TableSetColumnIndex(4);
+                        ImGui::Text("%s", t.date.c_str());
+
+                        ImGui::TableSetColumnIndex(5);
+                        ImGui::Text("%s", Transaction::toString(t.type).c_str());
+                    }
+
+                    ImGui::EndTable();
+                }
+
+                ImGui::EndTabItem();
+            }
+            ImGui::EndTabBar();
+
+            break;
+        }
+
+        case Page::Analytics:
+        {
+
+            // TODO:  DONE
+            //       CARDS: {Show total income, total expenses, net savings for selected period}
+            //       DONE
+
+            loadAnalyticsData(state);
+
+            if (!state.monthlySpendings.empty()) // Use better condition
+            {
+                static std::vector<std::string> catVec(state.categories.begin(), state.categories.end());
+                static std::unordered_map<std::string, std::vector<double>> catAmounts;
+                for (auto &cat : state.categories)
+                {
+                    std::vector<double> vals;
+                    for (auto &month : state.months)
+                    {
+                        double amt = 0;
+                        if (state.monthlySpendings[month].count(cat))
+                            amt = state.monthlySpendings[month][cat];
+                        vals.push_back(amt);
+                    }
+                    catAmounts[cat] = vals;
+                }
+
+                if (ImPlot::BeginPlot("Expenses by Category", ImVec2(700, 600), ImPlotAxisFlags_AutoFit))
+                {
+
+                    std::vector<const char *> labels;
+                    std::vector<double> tickPos;
+                    for (int i = 0; i < catVec.size(); i++)
+                    {
+                        labels.push_back(catVec[i].c_str());
+                        tickPos.push_back(i);
+                    }
+
+                    ImPlot::SetupAxes("Category", "INR", ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit);
+                    ImPlot::SetupAxisTicks(ImAxis_X1, tickPos.data(), tickPos.size(), labels.data());
+                    for (auto &[cat, amt] : catAmounts)
+                    {
+                        ImPlot::PlotBars("Expenses", amt.data(), amt.size());
+                    }
+
+                    ImPlot::EndPlot();
+                }
+                ImGui::SameLine();
+                if (ImPlot::BeginPlot("Spending by Categories by Months", ImVec2(600, 400)))
+                {
+                    const char *monthsByName[12] = {"Jan", "Feb", "Mar", "April", "May", "Jun",
+                                                    "July", "Aug", "Sep", "Oct", "Nov", "Dec"};
+                    ImPlot::SetupAxes("Month", "Amount", ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit);
+
+                    // Safety check for months
+                    if (!state.months.empty())
+                    {
+                        std::vector<double> monthTicks;
+                        std::vector<const char *> monthLabels;
+
+                        for (size_t i = 0; i < state.months.size(); i++)
+                        {
+                            monthTicks.push_back(static_cast<double>(i));
+                        }
+
+                        for (auto &m : state.monthlySpendings)
+                        {
+                            int mCode = m.first;
+                            int monthIdx = (mCode / 10000) - 1;
+                            monthLabels.push_back(monthsByName[monthIdx]);
+                            // std::cout << monthsByName[monthIdx] << std::endl;
+                        }
+
+                        ImPlot::SetupAxisTicks(ImAxis_X1, monthTicks.data(), static_cast<int>(monthTicks.size()), monthLabels.data());
+
+                        std::vector<double> monthsX(state.months.size());
+                        for (size_t i = 0; i < state.months.size(); ++i)
+                            monthsX[i] = static_cast<double>(i); // Use index instead of actual month value
+
+                        for (auto &[cat, amt] : catAmounts)
+                        {
+                            ImPlot::PlotLine(cat.c_str(), monthsX.data(), amt.data(), static_cast<int>(state.months.size()));
+                        }
+                    }
+
+                    ImPlot::EndPlot();
+                }
+
+                else
+                {
+                    ImGui::Text("No expenses recorded.");
+                }
+            }
+            else
+            {
+                ImGui::Text("No data available for analytics");
+            }
+
+            break;
+        }
+        }
+
+        ImGui::End(); // Home window
+
+        // --- RENDER ---
+        ImGui::Render();
+        int display_w, display_h;
+        glfwGetFramebufferSize(window, &display_w, &display_h);
+        glViewport(0, 0, display_w, display_h);
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        glfwSwapBuffers(window);
+    }
+
+    // Cleanup
+    ImPlot::DestroyContext();
+    ImGui::DestroyContext();
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    glfwDestroyWindow(window);
+    glfwTerminate();
+
+    return 0;
+}
