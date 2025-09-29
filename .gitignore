@@ -29,6 +29,7 @@ cmake_install.cmake
 *.so
 *.dll
 *.exe
+*.out
 
 #zips
 *.zip
