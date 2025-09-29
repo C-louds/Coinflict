@@ -22,7 +22,7 @@ Coinflict is a C++ desktop application for managing and analyzing personal finan
 - **Analytics**: Charts and statistics powered by ImPlot.  
 - **PDF Import**: Parse financial statements into structured transaction data.  
 - **Date Picker**: Intuitive time-based filtering of data(Yet to implement).  
-- Checkout [TODO.md](TODO.md) if intrested.
+- Checkout [TODO.md](app/TODO.md) if intrested.
 ---
 
 ## Installation
