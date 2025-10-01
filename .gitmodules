@@ -10,3 +10,6 @@
 [submodule "external/external/ImGuiDatePicker"]
 	path = external/external/ImGuiDatePicker
 	url = https://github.com/DnA-IntRicate/ImGuiDatePicker
+[submodule "IconFontCppHeaders"]
+	path = IconFontCppHeaders
+	url = https://github.com/juliettef/IconFontCppHeaders
