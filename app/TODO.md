@@ -1,7 +1,7 @@
 # TODO
 --- 
 
-- [ ] Add the Date Picker/ Make a custome one if necessary.
+- [x] Add the Date Picker/ Make a custome one if necessary.
 - [ ] The Plan Expenses Feature. 
 - [ ] Add Error-Messages and stuff.
 - [ ] Make The Layout better.

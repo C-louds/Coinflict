@@ -272,8 +272,8 @@ void SetupImGuiStyle()
     style.Colors[ImGuiCol_TableHeaderBg] = ImVec4(0.0470588244497776f, 0.05490196123719215f, 0.07058823853731155f, 1.0f);
     style.Colors[ImGuiCol_TableBorderStrong] = ImVec4(0.0470588244497776f, 0.05490196123719215f, 0.07058823853731155f, 1.0f);
     style.Colors[ImGuiCol_TableBorderLight] = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
-    style.Colors[ImGuiCol_TableRowBg] = ImVec4(0.1176470592617989f, 0.1333333402872086f, 0.1490196138620377f, 1.0f);
-    style.Colors[ImGuiCol_TableRowBgAlt] = ImVec4(0.09803921729326248f, 0.105882354080677f, 0.1215686276555061f, 1.0f);
+    style.Colors[ImGuiCol_TableRowBg] = ImVec4(0.0f,0.0f,0.0f,0.0f); //ImVec4(0.1176470592617989f, 0.1333333402872086f, 0.1490196138620377f, 1.0f);
+    style.Colors[ImGuiCol_TableRowBgAlt] =  ImVec4(0.0f,0.0f,0.0f,0.0f); //ImVec4(0.09803921729326248f, 0.105882354080677f, 0.1215686276555061f, 1.0f);
     style.Colors[ImGuiCol_TextSelectedBg] = ImVec4(0.2352941185235977f, 0.2156862765550613f, 0.5960784554481506f, 1.0f);
     style.Colors[ImGuiCol_DragDropTarget] = ImVec4(0.4980392158031464f, 0.5137255191802979f, 1.0f, 1.0f);
     style.Colors[ImGuiCol_NavHighlight] = ImVec4(0.4980392158031464f, 0.5137255191802979f, 1.0f, 1.0f);
@@ -419,7 +419,7 @@ int main()
         DrawBackgroundGradient();
 
         const char *tabs[] = {"Dashboard", "Transactions", "Analytics"};
-        float tabWidth = ImGui::GetContentRegionAvail().x / 3;
+        float tabWidth = ImGui::GetContentRegionAvail().x / IM_ARRAYSIZE(tabs);
 
         for (int i = 0; i < 3; i++)
         {
@@ -459,6 +459,20 @@ int main()
                 // Open the dialog (key, title, filter, path)
                 ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose a PDF", ".pdf", config);
                 state.pendingTransactions.clear();
+            }
+
+             if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey", ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize, ImVec2{(800.0f), (600.0f)}))
+            {
+
+                if (ImGuiFileDialog::Instance()->IsOk())
+                {
+                    std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
+                    // Do something with filePath
+                    std::cout << "User selected: " << filePath << std::endl;
+                    state.pendingTransactions = parsePDF(filePath);
+                    state.isPDFparsed = true;
+                }
+                ImGuiFileDialog::Instance()->Close();
             }
 
             static bool newTxnPopup = false;
@@ -815,7 +829,7 @@ int main()
                 if (ImGui::InputDouble("##amt", &amt, 0.0, 0.0, "%.2f"))
                 {
                     t.amount = amt;
-                    //std::cout << "New Amount: " << amt << std::endl;
+                    // std::cout << "New Amount: " << amt << std::endl;
                 }
 
                 ImGui::Text("Category: ");
@@ -833,7 +847,7 @@ int main()
                         if (ImGui::Selectable(c, isCatSelected))
                         {
                             t.category = std::string(c);
-                            //std::cout << c << " " << t.category << std::endl;
+                            // std::cout << c << " " << t.category << std::endl;
                         }
 
                         if (isCatSelected)
@@ -845,7 +859,7 @@ int main()
                     if (ImGui::Selectable(newCatLabel.c_str()))
                     {
                         newCatPopup = true;
-                        //std::cout << "POP UP" << std::endl;
+                        // std::cout << "POP UP" << std::endl;
                     }
                     ImGui::EndCombo();
                 }
@@ -949,16 +963,15 @@ int main()
                     std::cout << "txnDate: " << strTxnDate << std::endl;
                     t.date = strTxnDate;
                 }
-                else {
-                    std::ostringstream oss;
-                    oss << std::put_time(&ti, "%d-%m-%Y");
-                    strTxnDate = oss.str();
-
-                    std::cout << "txnDate: " << strTxnDate << std::endl;
-                    t.date = strTxnDate;
-                }
-
                 ImGui::PopStyleVar(3);
+                // TODO: FIX -> IS RUNNING EVERY FRAME.
+
+                std::ostringstream oss;
+                oss << std::put_time(&ti, "%d-%m-%Y");
+                strTxnDate = oss.str();
+
+                std::cout << "txnDate: " << strTxnDate << std::endl;
+                t.date = strTxnDate;
 
                 if (ImGui::Button("Save"))
                 {
@@ -1031,19 +1044,18 @@ int main()
 
             loadTransactionsData(state);
             ImGui::Text("Expenses");
-            static float posX[3];
-            static float colAnchor[3];
+            static float posX[5];
+            static float colAnchor[5];
 
-            if (ImGui::BeginTable("ExpensesTable", 3, ImGuiTableFlags_NoBordersInBody))
+            if (ImGui::BeginTable("ExpensesTable", 5, ImGuiTableFlags_NoBordersInBody))
             {
                 ImGui::TableNextRow();
-                const char *headers[] = {"Category", "Amount", "Date"}; // TODO: FIX THIS AND MAKEIT BETTER. PROPER FORMATING AND SHOW ALL INFO. THAT IS FOR OTHER TBLES TOO.
+                const char *headers[] = {"Category", "Label", "Amount", "Date", "Method"}; // TODO: FIX THIS AND MAKEIT BETTER. PROPER FORMATING AND SHOW ALL INFO. THAT IS FOR OTHER TBLES TOO.
 
                 for (int col = 0; col < IM_ARRAYSIZE(headers); col++)
                 {
                     ImGui::TableSetColumnIndex(col);
 
-                    // Get header text
                     const char *text = headers[col];
                     float colWidth = ImGui::GetColumnWidth();
                     float txtWidth = ImGui::CalcTextSize(text).x;
@@ -1072,33 +1084,30 @@ int main()
                     CenterTextInCol(txn.category.c_str(), colAnchor[0] - txtWidth);
 
                     ImGui::TableSetColumnIndex(1);
+                    txtWidth = ImGui::CalcTextSize(txn.label.c_str()).x;
+                    CenterTextInCol(txn.label.c_str(), colAnchor[1] - txtWidth);
+
+                    ImGui::TableSetColumnIndex(2);
                     std::string strAmt = std::format("{:.2f}", txn.amount);
                     ImVec4 amountColor = (txn.type == Transaction::TransactionType::Expense) ? ImVec4(1.000f, 0.322f, 0.322f, 1.0f) : ImVec4(0.000f, 0.784f, 0.325f, 1.0f);
                     txtWidth = ImGui::CalcTextSize(strAmt.c_str()).x;
-                    CenterTextInCol(strAmt.c_str(), colAnchor[1] - txtWidth, amountColor);
+                    CenterTextInCol(strAmt.c_str(), colAnchor[2] - txtWidth, amountColor);
 
-                    ImGui::TableSetColumnIndex(2);
+                    ImGui::TableSetColumnIndex(3);
                     txtWidth = ImGui::CalcTextSize(txn.date.c_str()).x;
-                    CenterTextInCol(txn.date.c_str(), colAnchor[2] - txtWidth);
+                    CenterTextInCol(txn.date.c_str(), colAnchor[3] - txtWidth);
+
+                    ImGui::TableSetColumnIndex(4);
+                    std::string strMethod = Transaction::toString(txn.method);
+                    txtWidth = ImGui::CalcTextSize(strMethod.c_str()).x;
+                    CenterTextInCol(strMethod.c_str(), colAnchor[4] - txtWidth);
                 }
                 ImGui::EndTable();
             }
 
             ImGui::Separator();
 
-            if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey", ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize, ImVec2{(800.0f), (600.0f)}))
-            {
-
-                if (ImGuiFileDialog::Instance()->IsOk())
-                {
-                    std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
-                    // Do something with filePath
-                    std::cout << "User selected: " << filePath << std::endl;
-                    state.pendingTransactions = parsePDF(filePath);
-                    state.isPDFparsed = true;
-                }
-                ImGuiFileDialog::Instance()->Close();
-            }
+           
 
             break;
         }
@@ -1112,17 +1121,18 @@ int main()
 
             if (ImGui::BeginTabItem("Recent Transactions"))
             {
-                if (ImGui::BeginTable("RecentTransactions", 3))
+                ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+                if (ImGui::BeginTable("RecentTransactions", 5, ImGuiTableFlags_NoBordersInBody | ImGuiTableFlags_ScrollY))
                 {
                     ImGui::TableNextRow();
-                    const char *headers[] = {"Category", "Amount", "Date"}; // TODO: FIX THIS AND MAKEIT BETTER. PROPER FORMATING AND SHOW ALL INFO. THAT IS FOR OTHER TBLES TOO.
-                    static float posX[3];
-                    static float colAnchor[3];
+                    const char *headers[] = {"Category", "Label", "Amount", "Date", "Method"}; // TODO: FIX THIS AND MAKEIT BETTER. PROPER FORMATING AND SHOW ALL INFO. THAT IS FOR OTHER TBLES TOO.
+                    static float posX[5];
+                    static float colAnchor[5];
                     for (int col = 0; col < IM_ARRAYSIZE(headers); col++)
                     {
                         ImGui::TableSetColumnIndex(col);
 
-                        // Get header text
+
                         const char *text = headers[col];
                         float colWidth = ImGui::GetColumnWidth();
                         float txtWidth = ImGui::CalcTextSize(text).x;
@@ -1144,18 +1154,28 @@ int main()
                         CenterTextInCol(t.category.c_str(), colAnchor[0] - txtWidth);
 
                         ImGui::TableSetColumnIndex(1);
+                        txtWidth = ImGui::CalcTextSize(t.label.c_str()).x;
+                        CenterTextInCol(t.label.c_str(), colAnchor[1] - txtWidth);
+
+                        ImGui::TableSetColumnIndex(2);
                         std::string strAmt = std::format("{:.2f}", t.amount);
                         ImVec4 amountColor = (t.type == Transaction::TransactionType::Expense) ? ImVec4(1.000f, 0.322f, 0.322f, 1.0f) : ImVec4(0.000f, 0.784f, 0.325f, 1.0f);
                         txtWidth = ImGui::CalcTextSize(strAmt.c_str()).x;
-                        CenterTextInCol(strAmt.c_str(), colAnchor[1] - txtWidth, amountColor);
+                        CenterTextInCol(strAmt.c_str(), colAnchor[2] - txtWidth, amountColor);
 
-                        ImGui::TableSetColumnIndex(2);
+                        ImGui::TableSetColumnIndex(3);
                         txtWidth = ImGui::CalcTextSize(t.date.c_str()).x;
-                        CenterTextInCol(t.date.c_str(), colAnchor[2] - txtWidth);
+                        CenterTextInCol(t.date.c_str(), colAnchor[3] - txtWidth);
+
+                        ImGui::TableSetColumnIndex(4);
+                        std::string strMethod = Transaction::toString(t.method);
+                        txtWidth = ImGui::CalcTextSize(strMethod.c_str()).x;
+                        CenterTextInCol(strMethod.c_str(), colAnchor[4] - txtWidth);
                     }
 
                     ImGui::EndTable();
                 }
+                ImGui::PopStyleColor();
 
                 ImGui::EndTabItem();
             }
