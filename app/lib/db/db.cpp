@@ -46,6 +46,7 @@ bool addTransactionToDB(double amount, const string &label, const string &method
     if (date.has_value())
     {
         string strDate = date.value();
+        std::cout << strDate << std::endl;
         const char *inputValues[6] = {strAmount.c_str(), label.c_str(), strDate.c_str(), method.c_str(), category.c_str(), strType.c_str()};
         res = PQexecPrepared(conn, "addPaymentWithDate", 6, inputValues, nullptr, nullptr, 0);
     }

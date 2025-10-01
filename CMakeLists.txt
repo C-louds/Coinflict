@@ -18,7 +18,7 @@ set(EXTERNAL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external)
 set(IMGUI_DIR ${EXTERNAL_DIR}/imgui)
 set(IMPLOT_DIR ${EXTERNAL_DIR}/implot)
 set(IMGUI_FILE_DIALOG_DIR ${EXTERNAL_DIR}/ImGuiFileDialog)
-
+set(IMGUI_DATE_PICKER_DIR ${EXTERNAL_DIR}/ImGuiDatePicker)
 # Sources
 set(SOURCES
     ../app/main.cpp
@@ -33,6 +33,7 @@ set(SOURCES
     ${IMGUI_FILE_DIALOG_DIR}/ImGuiFileDialog.cpp
     ${IMPLOT_DIR}/implot.cpp
     ${IMPLOT_DIR}/implot_items.cpp
+    ${IMGUI_DATE_PICKER_DIR}/ImGuiDatePicker.cpp
 )
 
 # Create executable
@@ -44,6 +45,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${IMGUI_DIR}/backends
     ${IMPLOT_DIR}
     ${IMGUI_FILE_DIALOG_DIR}
+    ${IMGUI_DATE_PICKER_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/lib
     ${POPPLER_INCLUDE_DIRS}
     ${DOTENV_CPP_INCLUDE_DIRS}

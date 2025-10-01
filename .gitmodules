@@ -7,3 +7,6 @@
 [submodule "external/ImGuiFileDialog"]
 	path = external/ImGuiFileDialog
 	url = https://github.com/aiekick/ImGuiFileDialog.git
+[submodule "external/external/ImGuiDatePicker"]
+	path = external/external/ImGuiDatePicker
+	url = https://github.com/DnA-IntRicate/ImGuiDatePicker

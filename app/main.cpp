@@ -13,6 +13,9 @@
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_opengl3.h"
 #include "../external/ImGuiFileDialog/ImGuiFileDialog.h"
+#define IMGUI_DATEPICKER_YEAR_MIN 1900
+#define IMGUI_DATEPICKER_YEAR_MAX 2100
+#include "../external/ImGuiDatePicker/ImGuiDatePicker.hpp"
 
 /// DB importttt
 #include "lib/db/db.h"
@@ -245,7 +248,7 @@ void SetupImGuiStyle()
     style.Colors[ImGuiCol_CheckMark] = ImVec4(0.4980392158031464f, 0.5137255191802979f, 1.0f, 1.0f);
     style.Colors[ImGuiCol_SliderGrab] = ImVec4(0.4980392158031464f, 0.5137255191802979f, 1.0f, 1.0f);
     style.Colors[ImGuiCol_SliderGrabActive] = ImVec4(0.5372549295425415f, 0.5529412031173706f, 1.0f, 1.0f);
-    style.Colors[ImGuiCol_Button] = ImVec4(0.1176470592617989f, 0.1333333402872086f, 0.1490196138620377f, 0.2f);
+    style.Colors[ImGuiCol_Button] = ImVec4(0.1176470592617989f, 0.1333333402872086f, 0.1490196138620377f, 0.18f);
     style.Colors[ImGuiCol_ButtonHovered] = ImVec4(1.0f, 1.0f, 1.0f, 0.15f); // ImVec4(0.196078434586525f, 0.1764705926179886f, 0.5450980663299561f, 0.8f);
     style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.2352941185235977f, 0.2156862765550613f, 0.5960784554481506f, 0.8f);
     style.Colors[ImGuiCol_Header] = ImVec4(0.1176470592617989f, 0.1333333402872086f, 0.1490196138620377f, 1.0f);
@@ -276,7 +279,48 @@ void SetupImGuiStyle()
     style.Colors[ImGuiCol_NavHighlight] = ImVec4(0.4980392158031464f, 0.5137255191802979f, 1.0f, 1.0f);
     style.Colors[ImGuiCol_NavWindowingHighlight] = ImVec4(0.4980392158031464f, 0.5137255191802979f, 1.0f, 1.0f);
     style.Colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.196078434586525f, 0.1764705926179886f, 0.5450980663299561f, 0.501960813999176f);
-    style.Colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.196078434586525f, 0.1764705926179886f, 0.5450980663299561f, 0.501960813999176f);
+    style.Colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.0f, 0.0f, 0.0f, 0.8f); // ImVec4(0.196078434586525f, 0.1764705926179886f, 0.5450980663299561f, 0.501960813999176f);
+}
+
+void DrawBackgroundGradient()
+{
+    ImDrawList *draw_list = ImGui::GetWindowDrawList();
+    ImVec2 windowPos = ImGui::GetWindowPos();
+    ImVec2 windowSize = ImGui::GetWindowSize();
+
+    // Single ellipse centered horizontally, positioned at top
+    ImVec2 center(windowPos.x + windowSize.x * 0.5f, windowSize.y + 80.0f);
+
+    // Make it very wide horizontally
+    float width = windowSize.x * 1.2f;
+    float height = 500.0f;
+
+    // Overall opacity for the entire effect
+    float overall_opacity = 0.18f;
+
+    // Glow settings
+    float glow_strength = 400.0f;
+    int glow_steps = 20;
+
+    // Draw glow layers (outermost to innermost)
+    for (int i = glow_steps; i > 0; i--)
+    {
+        float t = (float)i / (float)glow_steps;
+        float glow_width = width + t * glow_strength;
+        float glow_height = height + t * glow_strength;
+
+        // Very soft white glow
+        int alpha = (int)(255 * t * 0.04f * overall_opacity);
+        ImU32 glow_color = IM_COL32(255, 255, 255, alpha);
+
+        // Draw as ellipse using proper radius format
+        draw_list->AddEllipseFilled(center, ImVec2(glow_width * 0.5f, glow_height * 0.5f), glow_color, 0.0f, 64);
+    }
+
+    // Draw main ellipse core
+    // int main_alpha = (int)(10 * overall_opacity);
+    // ImU32 main_color = IM_COL32(255, 255, 255, main_alpha);
+    // draw_list->AddEllipseFilled(center, ImVec2(width * 0.5f, height * 0.5f), main_color, 0.0f, 64);
 }
 
 void CenterTextInCol(const char *txt, float posX = ImGui::GetCursorPosX(), ImVec4 color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f))
@@ -291,7 +335,8 @@ void CenterTextInCol(const char *txt, float posX = ImGui::GetCursorPosX(), ImVec
 
 void Card(const char *title, double val, const char *postValTxt = "")
 {
-    ImGui::BeginChild(title, ImVec2(250, 100), true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 30.0f);
+    ImGui::BeginChild(title, ImVec2(250, 100), true);
 
     ImGui::Text("%s", title);
     ImGui::Separator();
@@ -302,6 +347,8 @@ void Card(const char *title, double val, const char *postValTxt = "")
     ImGui::Text("%s", postValTxt);
     ImGui::PopStyleColor();
     ImGui::EndChild();
+
+    ImGui::PopStyleVar();
 }
 
 bool dashboardOpened = true;
@@ -328,7 +375,7 @@ int main()
     // Yea what?? Just creating a window.
     if (!glfwInit())
         return -1;
-    GLFWwindow *window = glfwCreateWindow(windowSizeX, windowSizeY, "Financial Tracker", nullptr, nullptr);
+    GLFWwindow *window = glfwCreateWindow(windowSizeX, windowSizeY, "Coinflict", nullptr, nullptr);
     if (!window)
         return -1;
     glfwMakeContextCurrent(window);
@@ -369,6 +416,7 @@ int main()
                                         ImGuiWindowFlags_NoNavFocus;
 
         ImGui::Begin("Home Menu", &dashboardOpened, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove);
+        DrawBackgroundGradient();
 
         const char *tabs[] = {"Dashboard", "Transactions", "Analytics"};
         float tabWidth = ImGui::GetContentRegionAvail().x / 3;
@@ -415,92 +463,6 @@ int main()
 
             static bool newTxnPopup = false;
             std::string newTxnpopupId = "##NewTxn";
-            ImGui::SameLine();
-            if (!state.isPDFparsed)
-            {
-                if (ImGui::Button("New Transaction", ImVec2(250,100)))
-                {
-                    newTxnPopup = true;
-                }
-            }
-
-            ImGui::EndGroup();
-            // Summary row
-            ImGui::Text("Last few transaction");
-            ImGui::Separator();
-            ImGui::Spacing();
-
-            loadTransactionsData(state);
-            ImGui::Text("Expenses");
-            static float posX[3];
-            static float colAnchor[3];
-
-            if (ImGui::BeginTable("ExpensesTable", 3, ImGuiTableFlags_NoBordersInBody))
-            {
-                ImGui::TableNextRow();
-                const char *headers[] = {"Category", "Amount", "Date"}; // TODO: FIX THIS AND MAKEIT BETTER. PROPER FORMATING AND SHOW ALL INFO. THAT IS FOR OTHER TBLES TOO.
-
-                for (int col = 0; col < IM_ARRAYSIZE(headers); col++)
-                {
-                    ImGui::TableSetColumnIndex(col);
-
-                    // Get header text
-                    const char *text = headers[col];
-                    float colWidth = ImGui::GetColumnWidth();
-                    float txtWidth = ImGui::CalcTextSize(text).x;
-                    float offsetX = (colWidth - txtWidth) * 0.5f;
-                    posX[col] = ImGui::GetCursorPosX() + offsetX;
-
-                    ImGui::SetCursorPosX(posX[col]);
-                    ImGui::TableHeader(text);
-                    colAnchor[col] = posX[col] + txtWidth;
-                }
-
-                /*ImGui::TableSetupColumn("Category", ImGuiTableColumnFlags_IndentEnable);
-                ImGui::TableSetupColumn("Amount");
-                ImGui::TableSetupColumn("Date");
-                ImGui::TableHeadersRow(); */
-
-                for (int i = 0; i < 20; i++)
-                {
-                    float txtWidth;
-                    auto txn = state.transactions[i];
-
-                    ImGui::TableNextRow();
-
-                    ImGui::TableSetColumnIndex(0);
-                    txtWidth = ImGui::CalcTextSize(txn.category.c_str()).x;
-                    CenterTextInCol(txn.category.c_str(), colAnchor[0] - txtWidth);
-
-                    ImGui::TableSetColumnIndex(1);
-                    std::string strAmt = std::format("{:.2f}", txn.amount);
-                    ImVec4 amountColor = (txn.type == Transaction::TransactionType::Expense) ? ImVec4(1.000f, 0.322f, 0.322f, 1.0f) : ImVec4(0.000f, 0.784f, 0.325f, 1.0f);
-                    txtWidth = ImGui::CalcTextSize(strAmt.c_str()).x;
-                    CenterTextInCol(strAmt.c_str(), colAnchor[1] - txtWidth, amountColor);
-
-                    ImGui::TableSetColumnIndex(2);
-                    txtWidth = ImGui::CalcTextSize(txn.date.c_str()).x;
-                    CenterTextInCol(txn.date.c_str(), colAnchor[2] - txtWidth);
-                }
-                ImGui::EndTable();
-            }
-
-            ImGui::Separator();
-
-            if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey", ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize, ImVec2{(800.0f), (600.0f)}))
-            {
-
-                if (ImGuiFileDialog::Instance()->IsOk())
-                {
-                    std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
-                    // Do something with filePath
-                    std::cout << "User selected: " << filePath << std::endl;
-                    state.pendingTransactions = parsePDF(filePath);
-                    state.isPDFparsed = true;
-                }
-                ImGuiFileDialog::Instance()->Close();
-            }
-
             std::vector<std::string> catVec(state.categories.begin(), state.categories.end());
             if (state.isPDFparsed)
             {
@@ -822,6 +784,15 @@ int main()
                 }
             }
 
+            ImGui::SameLine();
+            if (!state.isPDFparsed)
+            {
+                if (ImGui::Button("New Transaction", ImVec2(250, 100)))
+                {
+                    newTxnPopup = true;
+                }
+            }
+
             if (newTxnPopup)
             {
                 ImGui::OpenPopup(newTxnpopupId.c_str());
@@ -829,10 +800,11 @@ int main()
             }
 
             static Transaction t;
-            bool addNewTxn = false;
+            static bool addNewTxn = false;
             static double amt = 0;
             static char labelBuf[128] = "";
-            tm txnDate = {};
+            static std::string strTxnDate;
+
             static std::string actionResultPopupId = "##TxnResult";
             static std::string invalidTxnsPopupId = "##InvalidTxn";
             if (ImGui::BeginPopupModal(newTxnpopupId.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize))
@@ -843,7 +815,7 @@ int main()
                 if (ImGui::InputDouble("##amt", &amt, 0.0, 0.0, "%.2f"))
                 {
                     t.amount = amt;
-                    std::cout << "New Amount: " << amt << std::endl;
+                    //std::cout << "New Amount: " << amt << std::endl;
                 }
 
                 ImGui::Text("Category: ");
@@ -861,7 +833,7 @@ int main()
                         if (ImGui::Selectable(c, isCatSelected))
                         {
                             t.category = std::string(c);
-                            std::cout << c << " " << t.category << std::endl;
+                            //std::cout << c << " " << t.category << std::endl;
                         }
 
                         if (isCatSelected)
@@ -873,7 +845,7 @@ int main()
                     if (ImGui::Selectable(newCatLabel.c_str()))
                     {
                         newCatPopup = true;
-                        std::cout << "POP UP" << std::endl;
+                        //std::cout << "POP UP" << std::endl;
                     }
                     ImGui::EndCombo();
                 }
@@ -910,6 +882,7 @@ int main()
                 if (ImGui::InputText("##label", labelBuf, IM_ARRAYSIZE(labelBuf)))
                 {
                     std::cout << "New Label: " << labelBuf << std::endl;
+                    t.label = labelBuf;
                 }
 
                 ImGui::Text("Method: ");
@@ -958,22 +931,43 @@ int main()
                     ImGui::EndCombo();
                 }
 
-                /*ImGui::Text("Date: ");
-                if(ImGui::DatePicker("Select Date", txnDate)) {
+                // NEED TO RESET THE STYLES FOR THE DATE PICKER SINCE THE DATE PICKER STYLES WERE ALSO GETTING RESET DUE TO MY UI-STYLES.
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 3));
+                ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 2));
+                ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(4, 2));
+
+                ImGui::Text("Date: ");
+                static std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+                static std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
+                static tm ti = *std::gmtime(&currentTime);
+                if (ImGui::DatePickerEx("Select Date", ti, poppinsLight))
+                {
                     std::ostringstream oss;
-                    oss << std::put_time(&txnDate, "%d-%m-%Y");
-                    std::string strTxnDate = oss.str();
+                    oss << std::put_time(&ti, "%d-%m-%Y");
+                    strTxnDate = oss.str();
 
                     std::cout << "txnDate: " << strTxnDate << std::endl;
-                } */
+                    t.date = strTxnDate;
+                }
+                else {
+                    std::ostringstream oss;
+                    oss << std::put_time(&ti, "%d-%m-%Y");
+                    strTxnDate = oss.str();
+
+                    std::cout << "txnDate: " << strTxnDate << std::endl;
+                    t.date = strTxnDate;
+                }
+
+                ImGui::PopStyleVar(3);
 
                 if (ImGui::Button("Save"))
                 {
                     std::cout << t.amount << " " << Transaction::toString(t.method) << "  " << Transaction::toString(t.type) << std::endl;
                     if (validTransaction(t))
                     {
-                        addNewTxn = addTransactionToDB(t.amount, t.label, Transaction::toString(t.method), t.category, t.type);
+                        addNewTxn = addTransactionToDB(t.amount, t.label, Transaction::toString(t.method), t.category, t.type, t.date);
                         ImGui::OpenPopup(actionResultPopupId.c_str());
+                        std::cout << addNewTxn << std::endl;
 
                         if (addNewTxn)
                         {
@@ -1027,6 +1021,83 @@ int main()
                     ImGui::EndPopup();
                 }
                 ImGui::EndPopup();
+            }
+
+            ImGui::EndGroup();
+            // Summary row
+            ImGui::Text("Last few transaction");
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            loadTransactionsData(state);
+            ImGui::Text("Expenses");
+            static float posX[3];
+            static float colAnchor[3];
+
+            if (ImGui::BeginTable("ExpensesTable", 3, ImGuiTableFlags_NoBordersInBody))
+            {
+                ImGui::TableNextRow();
+                const char *headers[] = {"Category", "Amount", "Date"}; // TODO: FIX THIS AND MAKEIT BETTER. PROPER FORMATING AND SHOW ALL INFO. THAT IS FOR OTHER TBLES TOO.
+
+                for (int col = 0; col < IM_ARRAYSIZE(headers); col++)
+                {
+                    ImGui::TableSetColumnIndex(col);
+
+                    // Get header text
+                    const char *text = headers[col];
+                    float colWidth = ImGui::GetColumnWidth();
+                    float txtWidth = ImGui::CalcTextSize(text).x;
+                    float offsetX = (colWidth - txtWidth) * 0.5f;
+                    posX[col] = ImGui::GetCursorPosX() + offsetX;
+
+                    ImGui::SetCursorPosX(posX[col]);
+                    ImGui::TableHeader(text);
+                    colAnchor[col] = posX[col] + txtWidth;
+                }
+
+                /*ImGui::TableSetupColumn("Category", ImGuiTableColumnFlags_IndentEnable);
+                ImGui::TableSetupColumn("Amount");
+                ImGui::TableSetupColumn("Date");
+                ImGui::TableHeadersRow(); */
+
+                for (int i = 0; i < 20; i++)
+                {
+                    float txtWidth;
+                    auto txn = state.transactions[i];
+
+                    ImGui::TableNextRow();
+
+                    ImGui::TableSetColumnIndex(0);
+                    txtWidth = ImGui::CalcTextSize(txn.category.c_str()).x;
+                    CenterTextInCol(txn.category.c_str(), colAnchor[0] - txtWidth);
+
+                    ImGui::TableSetColumnIndex(1);
+                    std::string strAmt = std::format("{:.2f}", txn.amount);
+                    ImVec4 amountColor = (txn.type == Transaction::TransactionType::Expense) ? ImVec4(1.000f, 0.322f, 0.322f, 1.0f) : ImVec4(0.000f, 0.784f, 0.325f, 1.0f);
+                    txtWidth = ImGui::CalcTextSize(strAmt.c_str()).x;
+                    CenterTextInCol(strAmt.c_str(), colAnchor[1] - txtWidth, amountColor);
+
+                    ImGui::TableSetColumnIndex(2);
+                    txtWidth = ImGui::CalcTextSize(txn.date.c_str()).x;
+                    CenterTextInCol(txn.date.c_str(), colAnchor[2] - txtWidth);
+                }
+                ImGui::EndTable();
+            }
+
+            ImGui::Separator();
+
+            if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey", ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize, ImVec2{(800.0f), (600.0f)}))
+            {
+
+                if (ImGuiFileDialog::Instance()->IsOk())
+                {
+                    std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
+                    // Do something with filePath
+                    std::cout << "User selected: " << filePath << std::endl;
+                    state.pendingTransactions = parsePDF(filePath);
+                    state.isPDFparsed = true;
+                }
+                ImGuiFileDialog::Instance()->Close();
             }
 
             break;
