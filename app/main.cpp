@@ -3,6 +3,7 @@
 #include <string>
 #include <cmath>
 #include <chrono>
+#include <format>
 #include <numeric>
 #include <unordered_map>
 #include <algorithm>
@@ -17,7 +18,6 @@
 #include "lib/db/db.h"
 
 #include "lib/parser/parser.h"
-
 
 enum class Page
 {
@@ -226,7 +226,7 @@ void SetupImGuiStyle()
 
     style.Colors[ImGuiCol_Text] = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
     style.Colors[ImGuiCol_TextDisabled] = ImVec4(0.2745098173618317f, 0.3176470696926117f, 0.4509803950786591f, 1.0f);
-    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.0784313753247261f, 0.08627451211214066f, 0.1019607856869698f, 1.0f);
+    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.0f, 0.0f, 0.0f, 1.0f); // ImVec4(0.0784313753247261f, 0.08627451211214066f, 0.1019607856869698f, 1.0f);
     style.Colors[ImGuiCol_ChildBg] = ImVec4(0.0784313753247261f, 0.08627451211214066f, 0.1019607856869698f, 1.0f);
     style.Colors[ImGuiCol_PopupBg] = ImVec4(0.0784313753247261f, 0.08627451211214066f, 0.1019607856869698f, 1.0f);
     style.Colors[ImGuiCol_Border] = ImVec4(0.1568627506494522f, 0.168627455830574f, 0.1921568661928177f, 1.0f);
@@ -245,8 +245,8 @@ void SetupImGuiStyle()
     style.Colors[ImGuiCol_CheckMark] = ImVec4(0.4980392158031464f, 0.5137255191802979f, 1.0f, 1.0f);
     style.Colors[ImGuiCol_SliderGrab] = ImVec4(0.4980392158031464f, 0.5137255191802979f, 1.0f, 1.0f);
     style.Colors[ImGuiCol_SliderGrabActive] = ImVec4(0.5372549295425415f, 0.5529412031173706f, 1.0f, 1.0f);
-    style.Colors[ImGuiCol_Button] = ImVec4(0.1176470592617989f, 0.1333333402872086f, 0.1490196138620377f, 0.0f);
-    style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.196078434586525f, 0.1764705926179886f, 0.5450980663299561f, 0.8f);
+    style.Colors[ImGuiCol_Button] = ImVec4(0.1176470592617989f, 0.1333333402872086f, 0.1490196138620377f, 0.2f);
+    style.Colors[ImGuiCol_ButtonHovered] = ImVec4(1.0f, 1.0f, 1.0f, 0.15f); // ImVec4(0.196078434586525f, 0.1764705926179886f, 0.5450980663299561f, 0.8f);
     style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.2352941185235977f, 0.2156862765550613f, 0.5960784554481506f, 0.8f);
     style.Colors[ImGuiCol_Header] = ImVec4(0.1176470592617989f, 0.1333333402872086f, 0.1490196138620377f, 1.0f);
     style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.196078434586525f, 0.1764705926179886f, 0.5450980663299561f, 1.0f);
@@ -279,6 +279,16 @@ void SetupImGuiStyle()
     style.Colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.196078434586525f, 0.1764705926179886f, 0.5450980663299561f, 0.501960813999176f);
 }
 
+void CenterTextInCol(const char *txt, float posX = ImGui::GetCursorPosX(), ImVec4 color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f))
+{
+    float colWidth = ImGui::GetColumnWidth();
+    float txtWidth = ImGui::CalcTextSize(txt).x;
+
+    float offset = (colWidth - txtWidth) * 0.5f;
+    ImGui::SetCursorPosX(posX);
+    ImGui::TextColored(color, "%s", txt);
+}
+
 void Card(const char *title, double val, const char *postValTxt = "")
 {
     ImGui::BeginChild(title, ImVec2(250, 100), true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize);
@@ -301,13 +311,12 @@ Page currPage = Page::Dashboard; // Spawn Point
 
 int main()
 {
-    dotenv::init();
+    dotenv::init("../app/.env");
 
     std::string host = std::getenv("DB_HOST");
     std::string dbName = std::getenv("DB_NAME");
     std::string user = std::getenv("DB_USER");
     std::string password = std::getenv("DB_PASSWORD");
-
 
     PGconn *conn = connectDB(host, dbName, user, password);
     AppState state;
@@ -332,7 +341,7 @@ int main()
 
     float fontSize = 18.0f;
     ImGuiIO &io = ImGui::GetIO();
-    ImFont *poppinsLight = io.Fonts->AddFontFromFileTTF("lib/assets/Manrope-Regular.ttf", fontSize);
+    ImFont *poppinsLight = io.Fonts->AddFontFromFileTTF("../app/lib/assets/Poppins-Regular.ttf", fontSize);
     // io.Fonts->Build();
     io.FontDefault = poppinsLight;
     (void)io;
@@ -362,54 +371,17 @@ int main()
         ImGui::Begin("Home Menu", &dashboardOpened, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove);
 
         const char *tabs[] = {"Dashboard", "Transactions", "Analytics"};
-        float tab_width = ImGui::GetContentRegionAvail().x / 3;
+        float tabWidth = ImGui::GetContentRegionAvail().x / 3;
 
         for (int i = 0; i < 3; i++)
         {
             if (i > 0)
                 ImGui::SameLine();
-            if (ImGui::Button(tabs[i], ImVec2(tab_width, 0)))
+            if (ImGui::Button(tabs[i], ImVec2(tabWidth, 0)))
             {
                 currPage = static_cast<Page>(i); // Update current page
             }
         }
-
-        /*ImGuiStyle &style = ImGui::GetStyle();
-        float window_width = ImGui::GetContentRegionAvail().x;
-        int num_tabs = 3; // Dashboard, Transactions, Analytics
-        float tab_width = window_width / num_tabs;
-
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, style.ItemSpacing.y));
-
-        if (ImGui::BeginTabBar("MainTabs"))
-        {
-            if (ImGui::BeginTabItem("Dashboard"))
-            {
-                if (currPage != Page::Dashboard)
-                {
-                    currPage = Page::Dashboard;
-                }
-                ImGui::EndTabItem();
-            }
-            if (ImGui::BeginTabItem("Transactions"))
-            {
-                if (currPage != Page::Transactions)
-                {
-                    currPage = Page::Transactions;
-                }
-                ImGui::EndTabItem();
-            }
-            if (ImGui::BeginTabItem("Analytics"))
-            {
-                if (currPage != Page::Analytics)
-                {
-                    currPage = Page::Analytics;
-                }
-                ImGui::EndTabItem();
-            }
-            ImGui::EndTabBar();
-        }
-        ImGui::PopStyleVar(); */
 
         switch (currPage)
         {
@@ -427,52 +399,97 @@ int main()
             Card("Balance", state.balance);
             ImGui::SameLine();
             Card("Compared To Last Month", state.comparedToLastMonth, "%");
+
+            ImGui::SameLine();
+            // THE PDF SELECTOR FOR THE USER.  (do it manually later instead of the dependencies)
+            if (ImGui::Button("Upload Statement", ImVec2(250, 100)))
+            {
+                std::cout << "clicked" << std::endl;
+                IGFD::FileDialogConfig config;
+                config.path = ".";
+
+                // Open the dialog (key, title, filter, path)
+                ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose a PDF", ".pdf", config);
+                state.pendingTransactions.clear();
+            }
+
+            static bool newTxnPopup = false;
+            std::string newTxnpopupId = "##NewTxn";
+            ImGui::SameLine();
+            if (!state.isPDFparsed)
+            {
+                if (ImGui::Button("New Transaction", ImVec2(250,100)))
+                {
+                    newTxnPopup = true;
+                }
+            }
+
             ImGui::EndGroup();
             // Summary row
             ImGui::Text("Last few transaction");
             ImGui::Separator();
             ImGui::Spacing();
 
-            // Expenses Table - Use transactions data for dashboard too
-            loadTransactionsData(state); // Ensure we have transactions data
+            loadTransactionsData(state);
             ImGui::Text("Expenses");
-            if (ImGui::BeginTable("ExpensesTable", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+            static float posX[3];
+            static float colAnchor[3];
+
+            if (ImGui::BeginTable("ExpensesTable", 3, ImGuiTableFlags_NoBordersInBody))
             {
-                ImGui::TableSetupColumn("Category");
+                ImGui::TableNextRow();
+                const char *headers[] = {"Category", "Amount", "Date"}; // TODO: FIX THIS AND MAKEIT BETTER. PROPER FORMATING AND SHOW ALL INFO. THAT IS FOR OTHER TBLES TOO.
+
+                for (int col = 0; col < IM_ARRAYSIZE(headers); col++)
+                {
+                    ImGui::TableSetColumnIndex(col);
+
+                    // Get header text
+                    const char *text = headers[col];
+                    float colWidth = ImGui::GetColumnWidth();
+                    float txtWidth = ImGui::CalcTextSize(text).x;
+                    float offsetX = (colWidth - txtWidth) * 0.5f;
+                    posX[col] = ImGui::GetCursorPosX() + offsetX;
+
+                    ImGui::SetCursorPosX(posX[col]);
+                    ImGui::TableHeader(text);
+                    colAnchor[col] = posX[col] + txtWidth;
+                }
+
+                /*ImGui::TableSetupColumn("Category", ImGuiTableColumnFlags_IndentEnable);
                 ImGui::TableSetupColumn("Amount");
                 ImGui::TableSetupColumn("Date");
-                ImGui::TableHeadersRow();
+                ImGui::TableHeadersRow(); */
 
                 for (int i = 0; i < 20; i++)
                 {
+                    float txtWidth;
                     auto txn = state.transactions[i];
+
                     ImGui::TableNextRow();
-                    ImGui::TableSetColumnIndex(1);
-                    ImGui::Text("%.2f", txn.amount);
+
                     ImGui::TableSetColumnIndex(0);
-                    ImGui::Text("%s", txn.category.c_str());
+                    txtWidth = ImGui::CalcTextSize(txn.category.c_str()).x;
+                    CenterTextInCol(txn.category.c_str(), colAnchor[0] - txtWidth);
+
+                    ImGui::TableSetColumnIndex(1);
+                    std::string strAmt = std::format("{:.2f}", txn.amount);
+                    ImVec4 amountColor = (txn.type == Transaction::TransactionType::Expense) ? ImVec4(1.000f, 0.322f, 0.322f, 1.0f) : ImVec4(0.000f, 0.784f, 0.325f, 1.0f);
+                    txtWidth = ImGui::CalcTextSize(strAmt.c_str()).x;
+                    CenterTextInCol(strAmt.c_str(), colAnchor[1] - txtWidth, amountColor);
+
                     ImGui::TableSetColumnIndex(2);
-                    ImGui::Text("%s", txn.date.c_str());
+                    txtWidth = ImGui::CalcTextSize(txn.date.c_str()).x;
+                    CenterTextInCol(txn.date.c_str(), colAnchor[2] - txtWidth);
                 }
                 ImGui::EndTable();
             }
 
             ImGui::Separator();
 
-            // THE PDF SELECTOR FOR THE USER.  (do it manually later instead of the dependencies)
-
-            if (ImGui::Button("Upload Statement"))
+            if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey", ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize, ImVec2{(800.0f), (600.0f)}))
             {
-                IGFD::FileDialogConfig config;
-                config.path = ".";
-                // Open the dialog (key, title, filter, path)
-                ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose a PDF", ".pdf", config);
-                state.pendingTransactions.clear();
-            }
 
-            if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
-            {
-                // action if OK
                 if (ImGuiFileDialog::Instance()->IsOk())
                 {
                     std::string filePath = ImGuiFileDialog::Instance()->GetFilePathName();
@@ -805,16 +822,6 @@ int main()
                 }
             }
 
-            static bool newTxnPopup = false;
-            std::string newTxnpopupId = "##NewTxn";
-            ImGui::SameLine();
-            if (!state.isPDFparsed)
-            {
-                if (ImGui::Button("New Transaction"))
-                {
-                    newTxnPopup = true;
-                }
-            }
             if (newTxnPopup)
             {
                 ImGui::OpenPopup(newTxnpopupId.c_str());
@@ -1034,24 +1041,46 @@ int main()
 
             if (ImGui::BeginTabItem("Recent Transactions"))
             {
-
                 if (ImGui::BeginTable("RecentTransactions", 3))
                 {
-                    ImGui::TableSetupColumn("Category");
-                    ImGui::TableSetupColumn("Amount");
-                    ImGui::TableSetupColumn("Date");
-                    ImGui::TableHeadersRow();
+                    ImGui::TableNextRow();
+                    const char *headers[] = {"Category", "Amount", "Date"}; // TODO: FIX THIS AND MAKEIT BETTER. PROPER FORMATING AND SHOW ALL INFO. THAT IS FOR OTHER TBLES TOO.
+                    static float posX[3];
+                    static float colAnchor[3];
+                    for (int col = 0; col < IM_ARRAYSIZE(headers); col++)
+                    {
+                        ImGui::TableSetColumnIndex(col);
+
+                        // Get header text
+                        const char *text = headers[col];
+                        float colWidth = ImGui::GetColumnWidth();
+                        float txtWidth = ImGui::CalcTextSize(text).x;
+                        float offsetX = (colWidth - txtWidth) * 0.5f;
+                        posX[col] = ImGui::GetCursorPosX() + offsetX;
+
+                        ImGui::SetCursorPosX(posX[col]);
+                        ImGui::TableHeader(text);
+                        colAnchor[col] = posX[col] + txtWidth;
+                    }
 
                     for (auto &t : state.transactions)
                     {
+                        float txtWidth;
+
                         ImGui::TableNextRow();
-                        ImGui::TableSetColumnIndex(1);
-                        ImVec4 color = (t.type == Transaction::TransactionType::Expense) ? ImVec4(1.0f, 0.0f, 0.0f, 1.0f) : ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
-                        ImGui::TextColored(color, "%.2f", t.amount);
                         ImGui::TableSetColumnIndex(0);
-                        ImGui::Text("%s", t.category.c_str());
+                        txtWidth = ImGui::CalcTextSize(t.category.c_str()).x;
+                        CenterTextInCol(t.category.c_str(), colAnchor[0] - txtWidth);
+
+                        ImGui::TableSetColumnIndex(1);
+                        std::string strAmt = std::format("{:.2f}", t.amount);
+                        ImVec4 amountColor = (t.type == Transaction::TransactionType::Expense) ? ImVec4(1.000f, 0.322f, 0.322f, 1.0f) : ImVec4(0.000f, 0.784f, 0.325f, 1.0f);
+                        txtWidth = ImGui::CalcTextSize(strAmt.c_str()).x;
+                        CenterTextInCol(strAmt.c_str(), colAnchor[1] - txtWidth, amountColor);
+
                         ImGui::TableSetColumnIndex(2);
-                        ImGui::Text("%s", t.date.c_str());
+                        txtWidth = ImGui::CalcTextSize(t.date.c_str()).x;
+                        CenterTextInCol(t.date.c_str(), colAnchor[2] - txtWidth);
                     }
 
                     ImGui::EndTable();
@@ -1059,7 +1088,7 @@ int main()
 
                 ImGui::EndTabItem();
             }
-            std::vector<Transaction> queryTxns;
+            std::vector<Transaction> queryTs;
             float fullWidth = ImGui::GetContentRegionAvail().x;
             float halfWidth = fullWidth * 0.5f;
 
@@ -1177,7 +1206,7 @@ int main()
                     catAmounts[cat] = vals;
                 }
 
-                if (ImPlot::BeginPlot("Expenses by Category", ImVec2(700, 600), ImPlotAxisFlags_AutoFit))
+                if (ImPlot::BeginPlot("Expenses by Category", ImVec2(600, 400), ImPlotAxisFlags_AutoFit))
                 {
 
                     std::vector<const char *> labels;
@@ -1192,7 +1221,8 @@ int main()
                     ImPlot::SetupAxisTicks(ImAxis_X1, tickPos.data(), tickPos.size(), labels.data());
                     for (auto &[cat, amt] : catAmounts)
                     {
-                        ImPlot::PlotBars("Expenses", amt.data(), amt.size());
+
+                        ImPlot::PlotBars("Expenses", amt.data(), amt.size(), 0.2);
                     }
 
                     ImPlot::EndPlot();
@@ -1202,7 +1232,7 @@ int main()
                 {
                     const char *monthsByName[12] = {"Jan", "Feb", "Mar", "April", "May", "Jun",
                                                     "July", "Aug", "Sep", "Oct", "Nov", "Dec"};
-                    ImPlot::SetupAxes("Month", "Amount", ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit);
+                    ImPlot::SetupAxes("Month", "Amount", ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit | ImPlotAxisFlags_Opposite);
 
                     // Safety check for months
                     if (!state.months.empty())

@@ -32,3 +32,23 @@ Teal: #00BCD4
 
 Soft Pink (Background outside app): #F9CFE1
 
+// Primary UI Colors
+ImVec4 COLOR_BG              = ImVec4(0.110f, 0.110f, 0.118f, 1.0f); // #1C1C1E
+ImVec4 COLOR_CARD_BG         = ImVec4(0.173f, 0.173f, 0.180f, 1.0f); // #2C2C2E
+ImVec4 COLOR_TEXT_PRIMARY    = ImVec4(0.929f, 0.929f, 0.929f, 1.0f); // #EDEDED
+ImVec4 COLOR_TEXT_MUTED      = ImVec4(0.631f, 0.631f, 0.651f, 1.0f); // #A1A1A6
+
+// Status / Accent Colors
+ImVec4 COLOR_INCOME          = ImVec4(0.000f, 0.784f, 0.325f, 1.0f); // #00C853
+ImVec4 COLOR_EXPENSE         = ImVec4(1.000f, 0.322f, 0.322f, 1.0f); // #FF5252
+ImVec4 COLOR_HIGHLIGHT       = ImVec4(0.612f, 0.153f, 0.690f, 1.0f); // #9C27B0
+
+// Analytics Accent Colors
+ImVec4 COLOR_YELLOW          = ImVec4(1.000f, 0.922f, 0.231f, 1.0f); // #FFEB3B
+ImVec4 COLOR_ORANGE          = ImVec4(1.000f, 0.596f, 0.000f, 1.0f); // #FF9800
+ImVec4 COLOR_BLUE            = ImVec4(0.129f, 0.588f, 0.953f, 1.0f); // #2196F3
+ImVec4 COLOR_PINK            = ImVec4(1.000f, 0.251f, 0.506f, 1.0f); // #FF4081
+ImVec4 COLOR_TEAL            = ImVec4(0.000f, 0.737f, 0.831f, 1.0f); // #00BCD4
+
+// Brand / Background Accent
+ImVec4 COLOR_SOFT_PINK       = ImVec4(0.976f, 0.812f, 0.882f, 1.0f); // #F9CFE1
