@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict c5yNnRrxxrDehXJBRfBIBGZDtgfQnqjczS1JELqlQi8dh9GjfuEApRyijVSxVxx
+\restrict liCWETABRMweoqPoqbViZ2OS2FN2IYT3gemTbXMJbgewbG3safu1bLrq99Rqwnk
 
 -- Dumped from database version 17.6 (Ubuntu 17.6-1.pgdg24.04+1)
 -- Dumped by pg_dump version 17.6 (Ubuntu 17.6-1.pgdg24.04+1)
@@ -20,7 +20,21 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Name: method; Type: TYPE; Schema: public; Owner: clouds
+-- Name: public; Type: SCHEMA; Schema: -; Owner: -
+--
+
+CREATE SCHEMA public;
+
+
+--
+-- Name: SCHEMA public; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON SCHEMA public IS 'standard public schema';
+
+
+--
+-- Name: method; Type: TYPE; Schema: public; Owner: -
 --
 
 CREATE TYPE public.method AS ENUM (
@@ -31,10 +45,8 @@ CREATE TYPE public.method AS ENUM (
 );
 
 
-ALTER TYPE public.method OWNER TO clouds;
-
 --
--- Name: transactiontype; Type: TYPE; Schema: public; Owner: clouds
+-- Name: transactiontype; Type: TYPE; Schema: public; Owner: -
 --
 
 CREATE TYPE public.transactiontype AS ENUM (
@@ -43,19 +55,17 @@ CREATE TYPE public.transactiontype AS ENUM (
 );
 
 
-ALTER TYPE public.transactiontype OWNER TO clouds;
-
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
 
 --
--- Name: payments; Type: TABLE; Schema: public; Owner: clouds
+-- Name: payments; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.payments (
     id bigint NOT NULL,
-    username character varying(20) DEFAULT 'Dattraj'::character varying NOT NULL,
+    username character varying(20) DEFAULT 'YourName'::character varying NOT NULL,
     amount numeric(10,2) NOT NULL,
     label character varying(50) DEFAULT 'IDK'::character varying NOT NULL,
     date date DEFAULT CURRENT_DATE,
@@ -65,10 +75,8 @@ CREATE TABLE public.payments (
 );
 
 
-ALTER TABLE public.payments OWNER TO clouds;
-
 --
--- Name: payments_id_seq; Type: SEQUENCE; Schema: public; Owner: clouds
+-- Name: payments_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
 CREATE SEQUENCE public.payments_id_seq
@@ -79,24 +87,22 @@ CREATE SEQUENCE public.payments_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.payments_id_seq OWNER TO clouds;
-
 --
--- Name: payments_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: clouds
+-- Name: payments_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
 ALTER SEQUENCE public.payments_id_seq OWNED BY public.payments.id;
 
 
 --
--- Name: payments id; Type: DEFAULT; Schema: public; Owner: clouds
+-- Name: payments id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.payments ALTER COLUMN id SET DEFAULT nextval('public.payments_id_seq'::regclass);
 
 
 --
--- Name: payments payments_pkey; Type: CONSTRAINT; Schema: public; Owner: clouds
+-- Name: payments payments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.payments
@@ -107,5 +113,5 @@ ALTER TABLE ONLY public.payments
 -- PostgreSQL database dump complete
 --
 
-\unrestrict c5yNnRrxxrDehXJBRfBIBGZDtgfQnqjczS1JELqlQi8dh9GjfuEApRyijVSxVxx
+\unrestrict liCWETABRMweoqPoqbViZ2OS2FN2IYT3gemTbXMJbgewbG3safu1bLrq99Rqwnk
 

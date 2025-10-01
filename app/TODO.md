@@ -2,20 +2,20 @@
 --- 
 
 - [x] Add the Date Picker/ Make a custome one if necessary.
+- [ ] Upgrade the Parser(It is just a kind-of hardcoded rn).
 - [ ] The Plan Expenses Feature. 
 - [ ] Add Error-Messages and stuff.
 - [ ] Make The Layout better.
 - [ ] Add Icons.
-- [ ] Do something about the graphs.
+- [x] Do something about the graphs.
 - [ ] Add the balance display.
 - [ ] Make the UI better(try the Color-Pallet)
 - [ ] Add more analysis to the Analytics Page.
 - [ ] Add the "Ease of Life" features.
-- [ ] Make DB more Dynamic.
+- [ ] Make DB more Dynamic(Use DB-Transactions before pusing).
 - [ ] Optimize DB.
-- [ ] Upgrade the Parser(It is just a kind-of hardcoded rn).
 - [ ] Multi-Wallets adaptive.
 - [ ] Encryption maybe??
 - [ ] Multi-Accounts handeling.
-- [ ] Insights.
+- [ ] Insights(Analytics Page stuff).
 - [ ] Optimize Overall App.

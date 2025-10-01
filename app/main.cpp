@@ -103,18 +103,19 @@ void loadDashboardData(AppState &state)
 
         int thisMonth = getMonthYearInt();
         int lastMonth = ((thisMonth / 10000 + 11) % 12) * 10000 + (thisMonth % 10000 - (thisMonth / 10000 == 1 ? 1 : 0)); // TEMP FIX Because the map only contains the month if there is a txn in db for it. and dont worry about the 10000, you'll get it if you bother to see the values.
-        std::cout << lastMonth << std::endl;
+        std::cout << thisMonth << std::endl;
 
-        if (!state.monthlySpendings.count(thisMonth))
+        if (state.monthlySpendings.count(thisMonth))
 
             for (auto &[month, catMap] : state.monthlySpendings)
             {
+                std::cout << month << std::endl;
                 if (month == thisMonth)
                 {
                     for (auto &[cat, amt] : catMap)
                     {
                         state.spentThisMonth += amt;
-                        std::cout << "This Month" << state.spentThisMonth << std::endl;
+                        std::cout << "This Month" << amt << std::endl;
                     }
                 }
                 else if (month == lastMonth)
@@ -127,7 +128,7 @@ void loadDashboardData(AppState &state)
                 }
             }
 
-        state.comparedToLastMonth = (state.spentThisMonth == 0 || state.spentLastMonth == 0) ? state.spentLastMonth : (state.spentThisMonth / state.spentLastMonth) * 100;
+        state.comparedToLastMonth = (state.spentThisMonth == 0 || state.spentLastMonth == 0) ? state.spentThisMonth : (state.spentThisMonth / state.spentLastMonth) * 100;
         state.dashboardTransactionsLoaded = true;
     }
 }
@@ -248,9 +249,9 @@ void SetupImGuiStyle()
     style.Colors[ImGuiCol_CheckMark] = ImVec4(0.4980392158031464f, 0.5137255191802979f, 1.0f, 1.0f);
     style.Colors[ImGuiCol_SliderGrab] = ImVec4(0.4980392158031464f, 0.5137255191802979f, 1.0f, 1.0f);
     style.Colors[ImGuiCol_SliderGrabActive] = ImVec4(0.5372549295425415f, 0.5529412031173706f, 1.0f, 1.0f);
-    style.Colors[ImGuiCol_Button] = ImVec4(0.1176470592617989f, 0.1333333402872086f, 0.1490196138620377f, 0.18f);
-    style.Colors[ImGuiCol_ButtonHovered] = ImVec4(1.0f, 1.0f, 1.0f, 0.15f); // ImVec4(0.196078434586525f, 0.1764705926179886f, 0.5450980663299561f, 0.8f);
-    style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.2352941185235977f, 0.2156862765550613f, 0.5960784554481506f, 0.8f);
+    style.Colors[ImGuiCol_Button] = ImVec4(0.1176470592617989f, 0.1333333402872086f, 0.1490196138620377f, 0.0f);
+    style.Colors[ImGuiCol_ButtonHovered] = ImVec4(1.0f, 1.0f, 1.0f, 0.15f);     // ImVec4(0.196078434586525f, 0.1764705926179886f, 0.5450980663299561f, 0.8f);
+    style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.173f, 0.173f, 0.180f, 1.0f); // ImVec4(0.2352941185235977f, 0.2156862765550613f, 0.5960784554481506f, 0.8f);
     style.Colors[ImGuiCol_Header] = ImVec4(0.1176470592617989f, 0.1333333402872086f, 0.1490196138620377f, 1.0f);
     style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.196078434586525f, 0.1764705926179886f, 0.5450980663299561f, 1.0f);
     style.Colors[ImGuiCol_HeaderActive] = ImVec4(0.2352941185235977f, 0.2156862765550613f, 0.5960784554481506f, 1.0f);
@@ -272,8 +273,8 @@ void SetupImGuiStyle()
     style.Colors[ImGuiCol_TableHeaderBg] = ImVec4(0.0470588244497776f, 0.05490196123719215f, 0.07058823853731155f, 1.0f);
     style.Colors[ImGuiCol_TableBorderStrong] = ImVec4(0.0470588244497776f, 0.05490196123719215f, 0.07058823853731155f, 1.0f);
     style.Colors[ImGuiCol_TableBorderLight] = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
-    style.Colors[ImGuiCol_TableRowBg] = ImVec4(0.0f,0.0f,0.0f,0.0f); //ImVec4(0.1176470592617989f, 0.1333333402872086f, 0.1490196138620377f, 1.0f);
-    style.Colors[ImGuiCol_TableRowBgAlt] =  ImVec4(0.0f,0.0f,0.0f,0.0f); //ImVec4(0.09803921729326248f, 0.105882354080677f, 0.1215686276555061f, 1.0f);
+    style.Colors[ImGuiCol_TableRowBg] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);    // ImVec4(0.1176470592617989f, 0.1333333402872086f, 0.1490196138620377f, 1.0f);
+    style.Colors[ImGuiCol_TableRowBgAlt] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f); // ImVec4(0.09803921729326248f, 0.105882354080677f, 0.1215686276555061f, 1.0f);
     style.Colors[ImGuiCol_TextSelectedBg] = ImVec4(0.2352941185235977f, 0.2156862765550613f, 0.5960784554481506f, 1.0f);
     style.Colors[ImGuiCol_DragDropTarget] = ImVec4(0.4980392158031464f, 0.5137255191802979f, 1.0f, 1.0f);
     style.Colors[ImGuiCol_NavHighlight] = ImVec4(0.4980392158031464f, 0.5137255191802979f, 1.0f, 1.0f);
@@ -296,11 +297,11 @@ void DrawBackgroundGradient()
     float height = 500.0f;
 
     // Overall opacity for the entire effect
-    float overall_opacity = 0.18f;
+    float overall_opacity = 0.19f;
 
     // Glow settings
     float glow_strength = 400.0f;
-    int glow_steps = 20;
+    int glow_steps = 25;
 
     // Draw glow layers (outermost to innermost)
     for (int i = glow_steps; i > 0; i--)
@@ -335,8 +336,9 @@ void CenterTextInCol(const char *txt, float posX = ImGui::GetCursorPosX(), ImVec
 
 void Card(const char *title, double val, const char *postValTxt = "")
 {
+    float x = ImGui::GetWindowSize().x / 7;
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 30.0f);
-    ImGui::BeginChild(title, ImVec2(250, 100), true);
+    ImGui::BeginChild(title, ImVec2(x, 100), true);
 
     ImGui::Text("%s", title);
     ImGui::Separator();
@@ -425,9 +427,62 @@ int main()
         {
             if (i > 0)
                 ImGui::SameLine();
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
             if (ImGui::Button(tabs[i], ImVec2(tabWidth, 0)))
             {
                 currPage = static_cast<Page>(i); // Update current page
+            }
+            ImGui::PopStyleColor();
+
+            static float hoverAnimT[3] = {0.0f, 0.0f, 0.0f};
+            float dt = ImGui::GetIO().DeltaTime;
+            float speed = 3.0f;
+            ImVec2 p1 = ImGui::GetItemRectMin();
+            ImVec2 p2 = ImGui::GetItemRectMax();
+            ImVec2 lineY(p1.x, p2.y);
+            float inset = 150.0f;
+            float lineHalf = (p2.x - p1.x) / 2.0f - inset;
+
+            if (currPage == static_cast<Page>(i))
+            {
+                ImDrawList *drawList = ImGui::GetWindowDrawList();
+                ImVec2 start(p1.x + (p2.x - p1.x) / 2.0f - lineHalf, p2.y);
+                ImVec2 end(p1.x + (p2.x - p1.x) / 2.0f + lineHalf, p2.y);
+
+                drawList->AddLine(start, end, IM_COL32(255, 255, 255, 150), 1.0f);
+            }
+            if (ImGui::IsItemHovered())
+            {
+                hoverAnimT[i] += dt * speed;
+                if (hoverAnimT[i] > 1.0f)
+                    hoverAnimT[i] = 1.0f;
+                /*ImDrawList *draw_list = ImGui::GetWindowDrawList();
+                ImVec2 pos = ImGui::GetItemRectMin();
+                ImVec2 size = ImGui::GetItemRectSize();
+                ImVec2 p1 = ImGui::GetItemRectMin();
+                ImVec2 p2 = ImGui::GetItemRectMax();
+
+
+                ImVec2 lineStart(p1.x, p2.y); // Bottom-left
+                ImVec2 lineEnd(p2.x, p2.y);   // Bottom-right
+
+                draw_list->AddLine(lineStart, lineEnd, IM_COL32(255, 255, 255, 255), 1.0f); */
+            }
+            else
+            {
+                hoverAnimT[i] -= dt * speed;
+                if (hoverAnimT[i] < 0.0f)
+                    hoverAnimT[i] = 0.0f;
+            }
+
+            float animatedHalf = lineHalf * hoverAnimT[i];
+            ImVec2 start(p1.x + (p2.x - p1.x) / 2.0f - animatedHalf, p2.y);
+            ImVec2 end(p1.x + (p2.x - p1.x) / 2.0f + animatedHalf, p2.y);
+
+            if (hoverAnimT[i] > 0.0f)
+            {
+                ImDrawList *drawList = ImGui::GetWindowDrawList();
+                drawList->AddLine(start, end, IM_COL32(255, 255, 255, 150), 1.0f);
             }
         }
 
@@ -450,7 +505,7 @@ int main()
 
             ImGui::SameLine();
             // THE PDF SELECTOR FOR THE USER.  (do it manually later instead of the dependencies)
-            if (ImGui::Button("Upload Statement", ImVec2(250, 100)))
+            if (ImGui::Button("Upload Statement", ImVec2(ImGui::GetWindowSize().x/7, 100)))
             {
                 std::cout << "clicked" << std::endl;
                 IGFD::FileDialogConfig config;
@@ -461,7 +516,7 @@ int main()
                 state.pendingTransactions.clear();
             }
 
-             if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey", ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize, ImVec2{(800.0f), (600.0f)}))
+            if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey", ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize, ImVec2{(800.0f), (600.0f)}))
             {
 
                 if (ImGuiFileDialog::Instance()->IsOk())
@@ -801,7 +856,7 @@ int main()
             ImGui::SameLine();
             if (!state.isPDFparsed)
             {
-                if (ImGui::Button("New Transaction", ImVec2(250, 100)))
+                if (ImGui::Button("New Transaction", ImVec2(ImGui::GetWindowSize().x/7, 100)))
                 {
                     newTxnPopup = true;
                 }
@@ -1107,8 +1162,6 @@ int main()
 
             ImGui::Separator();
 
-           
-
             break;
         }
 
@@ -1131,7 +1184,6 @@ int main()
                     for (int col = 0; col < IM_ARRAYSIZE(headers); col++)
                     {
                         ImGui::TableSetColumnIndex(col);
-
 
                         const char *text = headers[col];
                         float colWidth = ImGui::GetColumnWidth();
@@ -1179,7 +1231,9 @@ int main()
 
                 ImGui::EndTabItem();
             }
-            std::vector<Transaction> queryTs;
+            
+            
+
             float fullWidth = ImGui::GetContentRegionAvail().x;
             float halfWidth = fullWidth * 0.5f;
 
@@ -1192,9 +1246,12 @@ int main()
                 static std::string searchVal;
 
                 ImGui::SetNextItemWidth(halfWidth);
-                if (ImGui::InputText("##searchTxns", searchBuf, sizeof(searchBuf)))
+                if (ImGui::InputText("##searchTxns", searchBuf, sizeof(searchBuf), ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_EnterReturnsTrue))
                 {
                     searchVal = std::string(searchBuf);
+                    state.searchTransactions = searchTransactions(searchProp, searchVal);
+                    std::cout << "Search for: " << searchVal << " in: " << searchProp << std::endl;
+
                 }
 
                 ImGui::SameLine();
