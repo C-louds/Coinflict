@@ -134,7 +134,7 @@ psql -h $DB_HOST -U $DB_USER -d $DB_NAME -f schema.sql
 
 ---
 
-### 4️⃣ Connect Coinflict to the Database
+### Connect Coinflict to the Database
 
 The application reads the `.env` file to connect to your database. Once your `.env` is configured and the schema is applied, Coinflict will automatically connect using those credentials.
 
