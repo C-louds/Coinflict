@@ -86,7 +86,7 @@ make
 
 Coinflict uses a SQL database to store transactions and analytics. You can set up the database using the provided `schema.sql` file and a `.env` configuration file.
 
-### 1️⃣ Create a `.env` File
+### Create a `.env` File
 
 Create a file named `.env` in the root of the project with the following variables:
 
