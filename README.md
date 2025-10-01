@@ -107,7 +107,7 @@ DB_PASSWORD=your_password
 The `schema.sql` file contains the structure of the database, including the `user` column. Update the `user` field in the schema to match your username from `.env`:
 
 ```sql
--- Example from schema.sql
+-- Example
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(255) NOT NULL DEFAULT 'your_username',
