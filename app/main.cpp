@@ -892,7 +892,7 @@ int main()
 
             if (!state.isPDFparsed)
             {
-                if (ImGui::Button(ICON_MD_ADD_TASK " New Transaction", ImVec2(ImGui::GetWindowSize().x / 7, 100)))
+                if (ImGui::Button(ICON_MD_ADD_CIRCLE_OUTLINE " New Transaction", ImVec2(ImGui::GetWindowSize().x / 7, 100)))
                 {
                     newTxnPopup = true;
                 }
@@ -1150,7 +1150,7 @@ int main()
                 if (ImGui::BeginTable("ExpensesTable", 5, ImGuiTableFlags_NoBordersInBody))
                 {
                     ImGui::TableNextRow();
-                    const char *headers[] = {"Category", "Label", "Amount", "Date", "Method"};
+                    const char *headers[] = {"Date", "Category", "Label", "Amount", "Method"};
 
                     for (int col = 0; col < IM_ARRAYSIZE(headers); col++)
                     {
@@ -1180,22 +1180,22 @@ int main()
                         ImGui::TableNextRow();
 
                         ImGui::TableSetColumnIndex(0);
-                        txtWidth = ImGui::CalcTextSize(txn.category.c_str()).x;
-                        CenterTextInCol(txn.category.c_str(), colAnchor[0] - txtWidth);
+                        txtWidth = ImGui::CalcTextSize(txn.date.c_str()).x;
+                        CenterTextInCol(txn.date.c_str(), colAnchor[0] - txtWidth);
 
                         ImGui::TableSetColumnIndex(1);
-                        txtWidth = ImGui::CalcTextSize(txn.label.c_str()).x;
-                        CenterTextInCol(txn.label.c_str(), colAnchor[1] - txtWidth);
+                        txtWidth = ImGui::CalcTextSize(txn.category.c_str()).x;
+                        CenterTextInCol(txn.category.c_str(), colAnchor[1] - txtWidth);
 
                         ImGui::TableSetColumnIndex(2);
+                        txtWidth = ImGui::CalcTextSize(txn.label.c_str()).x;
+                        CenterTextInCol(txn.label.c_str(), colAnchor[2] - txtWidth);
+
+                        ImGui::TableSetColumnIndex(3);
                         std::string strAmt = std::format("{:.2f}", txn.amount);
                         ImVec4 amountColor = (txn.type == Transaction::TransactionType::Expense) ? ImVec4(1.000f, 0.322f, 0.322f, 1.0f) : ImVec4(0.000f, 0.784f, 0.325f, 1.0f);
                         txtWidth = ImGui::CalcTextSize(strAmt.c_str()).x;
-                        CenterTextInCol(strAmt.c_str(), colAnchor[2] - txtWidth, amountColor);
-
-                        ImGui::TableSetColumnIndex(3);
-                        txtWidth = ImGui::CalcTextSize(txn.date.c_str()).x;
-                        CenterTextInCol(txn.date.c_str(), colAnchor[3] - txtWidth);
+                        CenterTextInCol(strAmt.c_str(), colAnchor[3] - txtWidth, amountColor);
 
                         ImGui::TableSetColumnIndex(4);
                         std::string strMethod = Transaction::toString(txn.method);
@@ -1219,7 +1219,7 @@ int main()
 
             if (ImGui::BeginTabItem("Recent Transactions"))
             {
-                state.transactions.clear();
+
                 if (state.transactions.empty())
                 {
                     ImGui::PushFont(poppinsMediumItalic);
@@ -1232,7 +1232,7 @@ int main()
                     if (ImGui::BeginTable("RecentTransactions", 5, ImGuiTableFlags_NoBordersInBody | ImGuiTableFlags_ScrollY))
                     {
                         ImGui::TableNextRow();
-                        const char *headers[] = {"Category", "Label", "Amount", "Date", "Method"}; // TODO: FIX THIS AND MAKEIT BETTER. PROPER FORMATING AND SHOW ALL INFO. THAT IS FOR OTHER TBLES TOO.
+                        const char *headers[] = {"Date", "Category", "Label", "Amount", "Method"}; // TODO: FIX THIS AND MAKEIT BETTER. PROPER FORMATING AND SHOW ALL INFO. THAT IS FOR OTHER TBLES TOO.
                         static float posX[5];
                         static float colAnchor[5];
                         for (int col = 0; col < IM_ARRAYSIZE(headers); col++)
@@ -1256,22 +1256,22 @@ int main()
 
                             ImGui::TableNextRow();
                             ImGui::TableSetColumnIndex(0);
-                            txtWidth = ImGui::CalcTextSize(t.category.c_str()).x;
-                            CenterTextInCol(t.category.c_str(), colAnchor[0] - txtWidth);
+                            txtWidth = ImGui::CalcTextSize(t.date.c_str()).x;
+                            CenterTextInCol(t.date.c_str(), colAnchor[0] - txtWidth);
 
                             ImGui::TableSetColumnIndex(1);
-                            txtWidth = ImGui::CalcTextSize(t.label.c_str()).x;
-                            CenterTextInCol(t.label.c_str(), colAnchor[1] - txtWidth);
+                            txtWidth = ImGui::CalcTextSize(t.category.c_str()).x;
+                            CenterTextInCol(t.category.c_str(), colAnchor[1] - txtWidth);
 
                             ImGui::TableSetColumnIndex(2);
+                            txtWidth = ImGui::CalcTextSize(t.label.c_str()).x;
+                            CenterTextInCol(t.label.c_str(), colAnchor[2] - txtWidth);
+
+                            ImGui::TableSetColumnIndex(3);
                             std::string strAmt = std::format("{:.2f}", t.amount);
                             ImVec4 amountColor = (t.type == Transaction::TransactionType::Expense) ? ImVec4(1.000f, 0.322f, 0.322f, 1.0f) : ImVec4(0.000f, 0.784f, 0.325f, 1.0f);
                             txtWidth = ImGui::CalcTextSize(strAmt.c_str()).x;
-                            CenterTextInCol(strAmt.c_str(), colAnchor[2] - txtWidth, amountColor);
-
-                            ImGui::TableSetColumnIndex(3);
-                            txtWidth = ImGui::CalcTextSize(t.date.c_str()).x;
-                            CenterTextInCol(t.date.c_str(), colAnchor[3] - txtWidth);
+                            CenterTextInCol(strAmt.c_str(), colAnchor[3] - txtWidth, amountColor);
 
                             ImGui::TableSetColumnIndex(4);
                             std::string strMethod = Transaction::toString(t.method);
@@ -1428,11 +1428,14 @@ int main()
                     catAmounts[cat] = vals;
                 }
 
-                if (ImPlot::BeginPlot("Expenses by Category", ImVec2(600, 400), ImPlotAxisFlags_AutoFit))
+                ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(30, 30));
+
+                if (ImPlot::BeginPlot("Expenses by Category", ImVec2(600, 400), ImPlotFlags_NoFrame | ImPlotFlags_NoLegend))
                 {
 
                     std::vector<const char *> labels;
                     std::vector<double> tickPos;
+                    int idx = 0;
                     for (int i = 0; i < catVec.size(); i++)
                     {
                         labels.push_back(catVec[i].c_str());
@@ -1441,16 +1444,27 @@ int main()
 
                     ImPlot::SetupAxes("Category", "INR", ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit);
                     ImPlot::SetupAxisTicks(ImAxis_X1, tickPos.data(), tickPos.size(), labels.data());
-                    for (auto &[cat, amt] : catAmounts)
-                    {
 
-                        ImPlot::PlotBars("Expenses", amt.data(), amt.size(), 0.2);
+                    idx = 0;
+                    for (auto &[cat, amtVec] : catAmounts)
+                    { 
+                        double total = std::accumulate(amtVec.begin(), amtVec.end(), 0.0);
+                        ImPlot::PushStyleColor(ImPlotCol_Fill, ImPlot::GetColormapColor(idx));
+                        ImPlot::PlotBars("##cat", &total, 1, 0.3, idx);
+                        ImPlot::PopStyleColor();
+                        idx++;
                     }
 
                     ImPlot::EndPlot();
                 }
+
+                ImPlot::PopStyleVar();
+
                 ImGui::SameLine();
-                if (ImPlot::BeginPlot("Spending by Categories by Months", ImVec2(600, 400)))
+
+                ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(30, 30));
+
+                if (ImPlot::BeginPlot("Spending by Categories by Months", ImVec2(600, 400), ImPlotFlags_NoFrame))
                 {
                     const char *monthsByName[12] = {"Jan", "Feb", "Mar", "April", "May", "Jun",
                                                     "July", "Aug", "Sep", "Oct", "Nov", "Dec"};
@@ -1488,6 +1502,7 @@ int main()
                     }
 
                     ImPlot::EndPlot();
+                    ImPlot::PopStyleVar();
                 }
 
                 else
@@ -1496,6 +1511,9 @@ int main()
                     ImGui::TextColored(ImVec4(1.0f, 0.522f, 0.522f, 1.0f), "%s", "No expenses recorded.");
                     ImGui::PopFont();
                 }
+
+
+                
             }
             else
             {
