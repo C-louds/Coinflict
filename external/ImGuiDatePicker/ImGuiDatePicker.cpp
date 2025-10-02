@@ -5,7 +5,6 @@
 #include <vector>
 #include <unordered_map>
 
-
 #define GET_DAY(timePoint) int(timePoint.tm_mday)
 #define GET_MONTH_UNSCALED(timePoint) timePoint.tm_mon
 #define GET_MONTH(timePoint) int(GET_MONTH_UNSCALED(timePoint) + 1)
@@ -18,34 +17,32 @@
 namespace ImGui
 {
     static const std::vector<std::string> MONTHS =
-    {
-        "January",
-        "February",
-        "March",
-        "April",
-        "May",
-        "June",
-        "July",
-        "August",
-        "September",
-        "October",
-        "November",
-        "December"
-    };
+        {
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December"};
 
     static const std::vector<std::string> DAYS =
-    {
-        "Mo",
-        "Tu",
-        "We",
-        "Th",
-        "Fr",
-        "Sa",
-        "Su"
-    };
+        {
+            "Mo",
+            "Tu",
+            "We",
+            "Th",
+            "Fr",
+            "Sa",
+            "Su"};
 
     // Implements Zeller's Congruence to determine the day of week [1, 7](Mon-Sun) from the given parameters
-    inline static int DayOfWeek(int dayOfMonth, int month, int year) noexcept
+     int DayOfWeek(int dayOfMonth, int month, int year) noexcept
     {
         if ((month == 1) || (month == 2))
         {
@@ -53,12 +50,7 @@ namespace ImGui
             year -= 1;
         }
 
-        int h = (dayOfMonth
-            + static_cast<int>(std::floor((13 * (month + 1)) / 5.0))
-            + year
-            + static_cast<int>(std::floor(year / 4.0))
-            - static_cast<int>(std::floor(year / 100.0))
-            + static_cast<int>(std::floor(year / 400.0))) % 7;
+        int h = (dayOfMonth + static_cast<int>(std::floor((13 * (month + 1)) / 5.0)) + year + static_cast<int>(std::floor(year / 4.0)) - static_cast<int>(std::floor(year / 100.0)) + static_cast<int>(std::floor(year / 400.0))) % 7;
 
         return static_cast<int>(std::floor(((h + 5) % 7) + 1));
     }
@@ -74,32 +66,31 @@ namespace ImGui
         return false;
     }
 
-    inline static int NumDaysInMonth(int month, int year)
+     int NumDaysInMonth(int month, int year)
     {
         if (month == 2)
             return IsLeapYear(year) ? 29 : 28;
 
         // Month index paired to the number of days in that month excluding February
         static const std::unordered_map<int, int> monthDayMap =
-        {
-            { 1,  31 },
-            { 3,  31 },
-            { 4,  30 },
-            { 5,  31 },
-            { 6,  30 },
-            { 7,  31 },
-            { 8,  31 },
-            { 9,  30 },
-            { 10, 31 },
-            { 11, 30 },
-            { 12, 31 }
-        };
+            {
+                {1, 31},
+                {3, 31},
+                {4, 30},
+                {5, 31},
+                {6, 30},
+                {7, 31},
+                {8, 31},
+                {9, 30},
+                {10, 31},
+                {11, 30},
+                {12, 31}};
 
         return monthDayMap.at(month);
     }
 
     // Returns the number of calendar weeks spanned by month in the specified year
-    inline static int NumWeeksInMonth(int month, int year)
+     int NumWeeksInMonth(int month, int year)
     {
         int days = NumDaysInMonth(month, year);
         int firstDay = DayOfWeek(1, month, year);
@@ -108,7 +99,7 @@ namespace ImGui
     }
 
     // Returns a vector containing dates as they would appear on the calendar for a given week. Populates 0 if there is no day.
-    inline static std::vector<int> CalendarWeek(int week, int startDay, int daysInMonth)
+    std::vector<int> CalendarWeek(int week, int startDay, int daysInMonth)
     {
         std::vector<int> res(7, 0);
         int startOfWeek = 7 * (week - 1) + 2 - startDay;
@@ -128,7 +119,7 @@ namespace ImGui
 
     constexpr static tm EncodeTimePoint(int dayOfMonth, int month, int year) noexcept
     {
-        tm res{ };
+        tm res{};
         res.tm_isdst = -1;
         SET_DAY(res, dayOfMonth);
         SET_MONTH(res, month);
@@ -137,7 +128,7 @@ namespace ImGui
         return res;
     }
 
-    inline static std::string TimePointToLongString(const tm& timePoint) noexcept
+     std::string TimePointToLongString(const tm &timePoint) noexcept
     {
         std::string day = std::to_string(GET_DAY(timePoint));
         std::string month = MONTHS[GET_MONTH_UNSCALED(timePoint)];
@@ -146,7 +137,7 @@ namespace ImGui
         return std::string(day + " " + month + " " + year);
     }
 
-    inline static tm Today() noexcept
+     tm Today() noexcept
     {
         std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
         std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
@@ -157,7 +148,7 @@ namespace ImGui
         return res;
     }
 
-    inline static tm PreviousMonth(const tm& timePoint) noexcept
+     tm PreviousMonth(const tm &timePoint) noexcept
     {
         int month = GET_MONTH(timePoint);
         int year = GET_YEAR(timePoint);
@@ -172,7 +163,7 @@ namespace ImGui
         return EncodeTimePoint(newDay, month, year);
     }
 
-    inline static tm NextMonth(const tm& timePoint) noexcept
+     tm NextMonth(const tm &timePoint) noexcept
     {
         int month = GET_MONTH(timePoint);
         int year = GET_YEAR(timePoint);
@@ -187,17 +178,17 @@ namespace ImGui
         return EncodeTimePoint(newDay, month, year);
     }
 
-    constexpr static bool IsMinDate(const tm& timePoint) noexcept
+    constexpr static bool IsMinDate(const tm &timePoint) noexcept
     {
         return (GET_MONTH(timePoint) == 1) && (GET_YEAR(timePoint) == IMGUI_DATEPICKER_YEAR_MIN);
     }
 
-    constexpr static bool IsMaxDate(const tm& timePoint) noexcept
+    constexpr static bool IsMaxDate(const tm &timePoint) noexcept
     {
         return (GET_MONTH(timePoint) == 12) && (GET_YEAR(timePoint) == IMGUI_DATEPICKER_YEAR_MAX);
     }
 
-    static bool ComboBox(const std::string& label, const std::vector<std::string>& items, int& v, ImFont* altFont)
+    static bool ComboBox(const std::string &label, const std::vector<std::string> &items, int &v, ImFont *altFont)
     {
         bool res = false;
 
@@ -224,11 +215,11 @@ namespace ImGui
         return res;
     }
 
-    bool DatePickerEx(const std::string& label, tm& v, ImFont* altFont, bool clampToBorder, float itemSpacing)
+    bool DatePickerEx(const std::string &label, tm &v, ImFont *altFont, bool clampToBorder, float itemSpacing)
     {
         bool res = false;
 
-        ImGuiWindow* window = GetCurrentWindow();
+        ImGuiWindow *window = GetCurrentWindow();
         if (window->SkipItems)
             return false;
 
@@ -322,11 +313,11 @@ namespace ImGui
             PopStyleVar();
 
             constexpr ImGuiTableFlags TABLE_FLAGS = ImGuiTableFlags_BordersOuter | ImGuiTableFlags_SizingFixedFit |
-                ImGuiTableFlags_NoHostExtendX | ImGuiTableFlags_NoHostExtendY;
+                                                    ImGuiTableFlags_NoHostExtendX | ImGuiTableFlags_NoHostExtendY;
 
-            if (BeginTable(std::string("##Table_" + myLabel).c_str(), 7, TABLE_FLAGS, ImVec2(500,200)))
+            if (BeginTable(std::string("##Table_" + myLabel).c_str(), 7, TABLE_FLAGS, ImVec2(500, 200)))
             {
-                for (const auto& day : DAYS)
+                for (const auto &day : DAYS)
                     TableSetupColumn(day.c_str(), ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoHeaderWidth, 30.0f);
 
                 PushStyleColor(ImGuiCol_HeaderHovered, GetStyleColorVec4(ImGuiCol_TableHeaderBg));
@@ -346,7 +337,7 @@ namespace ImGui
 
                 for (int i = 1; i <= numWeeksInMonth; ++i)
                 {
-                    for (const auto& day : CalendarWeek(i, firstDayOfMonth, numDaysInMonth))
+                    for (const auto &day : CalendarWeek(i, firstDayOfMonth, numDaysInMonth))
                     {
                         if (day != 0)
                         {
@@ -386,7 +377,7 @@ namespace ImGui
         return res;
     }
 
-    bool DatePicker(const std::string& label, tm& v, bool clampToBorder, float itemSpacing)
+    bool DatePicker(const std::string &label, tm &v, bool clampToBorder, float itemSpacing)
     {
         return DatePickerEx(label, v, nullptr, clampToBorder, itemSpacing);
     }
