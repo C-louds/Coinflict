@@ -367,7 +367,17 @@ void Card(const char *title, double val, const char *postValTxt = "")
 
 void DrawHeatMap(AppState &state)
 {
-    int currMonth = 22024; // getCurrMonthYearInt();
+
+    const ImVec2 CELL_SIZE(20.0f, 20.0f);
+    const ImVec2 CELL_SPACING(15.0f, 5.0f);
+    const float LABEL_MARGIN = 20.0f;
+    const float CELL_TEXT_PADDING_X = 4.0f;
+    const float CELL_TEXT_PADDING_Y = 2.0f;
+
+    const char *WEEK_DAYS[7] = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
+    const char *WEEK_LABELS[6] = {"Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6"};
+
+    int currMonth = getCurrMonthYearInt();
     int year = currMonth % 10000;
     int month = currMonth / 10000;
 
@@ -375,9 +385,7 @@ void DrawHeatMap(AppState &state)
     int numDaysInMonth = ImGui::NumDaysInMonth(month, year);
     int numWeeksInMonth = ImGui::NumWeeksInMonth(month, year);
 
-    // Collect daily totals
     std::vector<double> txnOfMonth(numDaysInMonth, 0.0);
-
     if (!state.transactions.empty())
     {
         for (auto &t : state.transactions)
@@ -390,17 +398,14 @@ void DrawHeatMap(AppState &state)
                 t.type == Transaction::TransactionType::Expense)
             {
                 txnOfMonth[tm.tm_mday - 1] += t.amount;
-                std::cout << tm.tm_mday << ": " << txnOfMonth[tm.tm_mday - 1] << std::endl;
             }
         }
     }
 
     double maxTxn = *std::max_element(txnOfMonth.begin(), txnOfMonth.end());
     if (maxTxn <= 0.0)
-        maxTxn = 1.0; // CUZ SHE WASN'T THE ONE.
+        maxTxn = 1.0; // CUZ SHE WASN'T THE ONE xD
 
-    // LOGARITHMATIC SCALE
-    //  TODO: PLAY AROUND AND MAYBE FIND A BETTER SCALE.
     auto normalize = [&](double v)
     {
         if (v <= 0.0)
@@ -408,53 +413,80 @@ void DrawHeatMap(AppState &state)
         return std::log10(v + 1.0) / std::log10(maxTxn + 1.0);
     };
 
-    // COLOR LEVELS IN CASE YOU FORGET(white -> light red -> deep red)
+    // COLOR LEVELS IN CASE YOU FORGET(white -> light red -> deep red), THERE MORE THAN 1 RED APPRENTLY
     auto getColor = [&](double v)
     {
-        double t = normalize(v); // 0..1
+        double t = normalize(v); 
         int r = 255;
         int g = (int)(255 * (1.0 - t));
         int b = (int)(255 * (1.0 - t));
         return IM_COL32(r, g, b, 255);
     };
 
-    ImVec2 cellSize = ImVec2(20, 20);
-    ImVec2 spacing = ImVec2(5, 5);
     ImVec2 start = ImGui::GetCursorScreenPos();
+    float labelWidth = ImGui::CalcTextSize("Week 1").x;
+    float labelOffset = labelWidth + LABEL_MARGIN;
+
     ImDrawList *drawList = ImGui::GetWindowDrawList();
+
+    std::string header = "Monthly Spendings Heatmap";
+    float totalWidth = labelOffset + 7 * (CELL_SIZE.x + CELL_SPACING.x);
+    float headerX = start.x + (totalWidth - ImGui::CalcTextSize(header.c_str()).x) * 0.5f;
+    drawList->AddText(ImVec2(headerX, start.y), IM_COL32(255, 255, 255, 255), header.c_str());
+
+    start.y += ImGui::CalcTextSize(header.c_str()).y + CELL_SPACING.y * 2;
+    drawList->AddLine(ImVec2(start.x, start.y),
+                      ImVec2(start.x + totalWidth, start.y),
+                      IM_COL32(255, 255, 255, 255), 1.0f);
+    start.y += 5;
+
+    for (int j = 0; j < 7; j++)
+    {
+        ImVec2 pos(start.x + labelOffset + j * (CELL_SIZE.x + CELL_SPACING.x), start.y);
+        drawList->AddText(pos, IM_COL32(255, 255, 255, 255), WEEK_DAYS[j]);
+    }
+
+    start.y += ImGui::GetTextLineHeightWithSpacing() + CELL_SPACING.y;
 
     for (int week = 0; week < numWeeksInMonth; week++)
     {
         std::vector<int> calWeek = ImGui::CalendarWeek(week + 1, firstDayOfMonth, numDaysInMonth);
 
-        for (int j = 0; j < 7; j++) // DON'T START CRYING ABOUT 7 BEING A MAGIC NUMBER. THERE. ARE. 7 DAYS. IN. A. WEEK.
+        ImVec2 labelPos(start.x, start.y + week * (CELL_SIZE.y + CELL_SPACING.y));
+        drawList->AddText(labelPos, IM_COL32(255, 255, 255, 255), WEEK_LABELS[week]);
+
+        for (int j = 0; j < 7; j++)
         {
             int day = calWeek[j];
-            if (day != 0) // day == 0 MEANS MONTH EITHER HAS NOT STARTED OR HAS ENDED MID-WEEK.
+            if (day != 0)
             {
-                ImVec2 posMin(
-                    start.x + j * (cellSize.x + spacing.x),
-                    start.y + week * (cellSize.y + spacing.y));
-                ImVec2 posMax(posMin.x + cellSize.x, posMin.y + cellSize.y);
+                ImVec2 posMin(start.x + labelOffset + j * (CELL_SIZE.x + CELL_SPACING.x),
+                              start.y + week * (CELL_SIZE.y + CELL_SPACING.y));
+                ImVec2 posMax(posMin.x + CELL_SIZE.x, posMin.y + CELL_SIZE.y);
 
                 double val = txnOfMonth[day - 1];
                 ImU32 color = getColor(val);
-                // std::cout << val << std::endl;
 
                 drawList->AddRectFilled(posMin, posMax, color, 4.0f);
 
-                // YOUR DAYS ARE NUMBERED xD
                 char buf[4];
                 snprintf(buf, sizeof(buf), "%d", day);
-                drawList->AddText(ImVec2(posMin.x + 4, posMin.y + 2), IM_COL32(0, 0, 0, 255), buf);
+                drawList->AddText(ImVec2(posMin.x + CELL_TEXT_PADDING_X,
+                                         posMin.y + CELL_TEXT_PADDING_Y),
+                                  IM_COL32(0, 0, 0, 255), buf);
+
+                if (ImGui::IsMouseHoveringRect(posMin, posMax))
+                {
+                    ImGui::BeginTooltip();
+                    ImGui::Text("Day %d\nSpent: %.2f", day, val);
+                    ImGui::EndTooltip();
+                }
             }
         }
     }
 
-    // Reserve space in layout
-    ImVec2 total_size(
-        7 * (cellSize.x + spacing.x) - spacing.x,
-        numWeeksInMonth * (cellSize.y + spacing.y) - spacing.y);
+    ImVec2 total_size(totalWidth,
+                      numWeeksInMonth * (CELL_SIZE.y + CELL_SPACING.y) - CELL_SPACING.y);
     ImGui::Dummy(total_size);
 }
 
@@ -1616,7 +1648,8 @@ int main()
                     ImGui::TextColored(ImVec4(1.0f, 0.522f, 0.522f, 1.0f), "%s", "No expenses recorded.");
                     ImGui::PopFont();
                 }
-                //DRAWING THE HEATMAP HERE. MIGHT MISS IT--------------------------------
+                // DRAWING THE HEATMAP HERE. MIGHT MISS IT--------------------------------
+                ImGui::SameLine();
                 DrawHeatMap(state);
             }
             else
