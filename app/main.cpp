@@ -365,6 +365,99 @@ void Card(const char *title, double val, const char *postValTxt = "")
     ImGui::PopStyleVar();
 }
 
+void DrawHeatMap(AppState &state)
+{
+    int currMonth = 22024; // getCurrMonthYearInt();
+    int year = currMonth % 10000;
+    int month = currMonth / 10000;
+
+    int firstDayOfMonth = ImGui::DayOfWeek(1, month, year);
+    int numDaysInMonth = ImGui::NumDaysInMonth(month, year);
+    int numWeeksInMonth = ImGui::NumWeeksInMonth(month, year);
+
+    // Collect daily totals
+    std::vector<double> txnOfMonth(numDaysInMonth, 0.0);
+
+    if (!state.transactions.empty())
+    {
+        for (auto &t : state.transactions)
+        {
+            std::tm tm = {};
+            std::istringstream ss(t.date);
+            ss >> std::get_time(&tm, "%Y-%m-%d");
+
+            if (ss && (tm.tm_year + 1900 == year) && (tm.tm_mon + 1 == month) &&
+                t.type == Transaction::TransactionType::Expense)
+            {
+                txnOfMonth[tm.tm_mday - 1] += t.amount;
+                std::cout << tm.tm_mday << ": " << txnOfMonth[tm.tm_mday - 1] << std::endl;
+            }
+        }
+    }
+
+    double maxTxn = *std::max_element(txnOfMonth.begin(), txnOfMonth.end());
+    if (maxTxn <= 0.0)
+        maxTxn = 1.0; // CUZ SHE WASN'T THE ONE.
+
+    // LOGARITHMATIC SCALE
+    //  TODO: PLAY AROUND AND MAYBE FIND A BETTER SCALE.
+    auto normalize = [&](double v)
+    {
+        if (v <= 0.0)
+            return 0.0;
+        return std::log10(v + 1.0) / std::log10(maxTxn + 1.0);
+    };
+
+    // COLOR LEVELS IN CASE YOU FORGET(white -> light red -> deep red)
+    auto getColor = [&](double v)
+    {
+        double t = normalize(v); // 0..1
+        int r = 255;
+        int g = (int)(255 * (1.0 - t));
+        int b = (int)(255 * (1.0 - t));
+        return IM_COL32(r, g, b, 255);
+    };
+
+    ImVec2 cellSize = ImVec2(20, 20);
+    ImVec2 spacing = ImVec2(5, 5);
+    ImVec2 start = ImGui::GetCursorScreenPos();
+    ImDrawList *drawList = ImGui::GetWindowDrawList();
+
+    for (int week = 0; week < numWeeksInMonth; week++)
+    {
+        std::vector<int> calWeek = ImGui::CalendarWeek(week + 1, firstDayOfMonth, numDaysInMonth);
+
+        for (int j = 0; j < 7; j++) // DON'T START CRYING ABOUT 7 BEING A MAGIC NUMBER. THERE. ARE. 7 DAYS. IN. A. WEEK.
+        {
+            int day = calWeek[j];
+            if (day != 0) // day == 0 MEANS MONTH EITHER HAS NOT STARTED OR HAS ENDED MID-WEEK.
+            {
+                ImVec2 posMin(
+                    start.x + j * (cellSize.x + spacing.x),
+                    start.y + week * (cellSize.y + spacing.y));
+                ImVec2 posMax(posMin.x + cellSize.x, posMin.y + cellSize.y);
+
+                double val = txnOfMonth[day - 1];
+                ImU32 color = getColor(val);
+                // std::cout << val << std::endl;
+
+                drawList->AddRectFilled(posMin, posMax, color, 4.0f);
+
+                // YOUR DAYS ARE NUMBERED xD
+                char buf[4];
+                snprintf(buf, sizeof(buf), "%d", day);
+                drawList->AddText(ImVec2(posMin.x + 4, posMin.y + 2), IM_COL32(0, 0, 0, 255), buf);
+            }
+        }
+    }
+
+    // Reserve space in layout
+    ImVec2 total_size(
+        7 * (cellSize.x + spacing.x) - spacing.x,
+        numWeeksInMonth * (cellSize.y + spacing.y) - spacing.y);
+    ImGui::Dummy(total_size);
+}
+
 bool dashboardOpened = true;
 int windowSizeX = 1920;
 int windowSizeY = 1080;
@@ -1498,14 +1591,14 @@ int main()
                             int mCode = m.first;
                             int monthIdx = (mCode / 10000) - 1;
                             monthLabels.push_back(monthsByName[monthIdx]);
-                            // std::cout << monthsByName[monthIdx] << std::endl;
+                            // std::cout << mCode << std::endl;
                         }
 
                         ImPlot::SetupAxisTicks(ImAxis_X1, monthTicks.data(), static_cast<int>(monthTicks.size()), monthLabels.data());
 
                         std::vector<double> monthsX(state.months.size());
                         for (size_t i = 0; i < state.months.size(); ++i)
-                            monthsX[i] = static_cast<double>(i); // Use index instead of actual month value
+                            monthsX[i] = static_cast<double>(i);
 
                         for (auto &[cat, amt] : catAmounts)
                         {
@@ -1523,85 +1616,8 @@ int main()
                     ImGui::TextColored(ImVec4(1.0f, 0.522f, 0.522f, 1.0f), "%s", "No expenses recorded.");
                     ImGui::PopFont();
                 }
-
-                if (ImPlot::BeginPlot("Weekly Transactions Heat-Map", ImVec2(600, 300), ImPlotFlags_NoFrame | ImPlotFlags_NoMouseText))
-                {
-                    // TEMP. TODO: IMPLEMET THE HEATMAP.
-                    // PLAY AROUND WITH THE TRANSFORMATION TO HEATMAP VALUES AND FIND A GOOD SUITABLE FUNCTION FOR THAT TRANSFORMATION.
-
-                    ImVec4 github_green[] = {
-                        ImVec4(0.09f, 0.11f, 0.13f, 1.0f), // background
-                        ImVec4(0.05f, 0.27f, 0.16f, 1.0f),
-                        ImVec4(0.00f, 0.43f, 0.20f, 1.0f),
-                        ImVec4(0.15f, 0.65f, 0.25f, 1.0f),
-                        ImVec4(0.22f, 0.83f, 0.33f, 1.0f)};
-
-                    static bool colorMapAdded = false;
-                    if (!colorMapAdded)
-                    {
-                        ImPlot::AddColormap("GitHubGreen", github_green, IM_ARRAYSIZE(github_green));
-                        colorMapAdded = true;
-                    }
-
-                    static std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
-                    static std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
-                    static tm v = *std::gmtime(&currentTime);
-
-                    /*int monthIdx = GET_MONTH_UNSCALED(v);
-                    int year = GET_YEAR(v);
-                    int monthCal = monthIdx + 1;
-                    int firstDayOfMonth = ImGui::DayOfWeek(1, month, year);
-                    */
-
-                    int currMonth = 92025; // getCurrMonthYearInt();
-                    int numDaysInMonth = ImGui::NumDaysInMonth(currMonth / 10000, currMonth % 10000);
-                    int numWeeksInMonth = ImGui::NumWeeksInMonth(currMonth / 10000, currMonth % 10000);
-                    static std::vector<double> txnOfMonth(numDaysInMonth, 0.0);
-                    static std::vector<double> heatmapValues(numDaysInMonth, 0.0);
-
-                    if (!state.transactions.empty())
-                    {
-                        for (auto &t : state.transactions)
-                        {
-                            std::tm tm = {};
-                            std::istringstream ss(t.date);
-                            ss >> std::get_time(&tm, "%Y-%m-%d");
-
-                            if (tm.tm_mon + 1 == currMonth / 10000 && t.type == Transaction::TransactionType::Expense)
-                            {
-                                txnOfMonth[tm.tm_mday - 1] += t.amount;
-                                // std::cout << txnOfMonth[tm.tm_mday - 1] << "____" << t.date << std::endl;
-                            }
-                        }
-                    }
-
-                    for (int i = 0; i < txnOfMonth.size(); i++)
-                    {
-                        heatmapValues[i] = (txnOfMonth[i] == 0) ? 0 : sqrt(txnOfMonth[i]);
-                        // std::cout << i << ": " << heatmapValues[i] << std::endl;
-                    }
-
-
-
-                    int rows = numWeeksInMonth;
-                    int cols = 7;
-                    ImPlotPoint lower_left(0, 0); // Day=0, Week=0
-                    ImPlotPoint upper_right(cols, rows);
-                    double maxAmount = *std::max_element(heatmapValues.begin(), heatmapValues.end());
-                    double minAmount = *std::min_element(heatmapValues.begin(), heatmapValues.end());
-
-                    const char *daysOfWeek[] = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
-                    const char *nWeeks[] = {"Week 5", "Week 4", "Week 3", "Week 2", "Week 1"};
-                    ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_NoDecorations);
-                    ImPlot::SetupAxisTicks(ImAxis_X1, 0.5, cols - 0.5, 7, daysOfWeek);
-                    ImPlot::SetupAxisTicks(ImAxis_Y1, 0.5, 4.5, 5, nWeeks);
-
-                    ImPlot::PushColormap("GitHubGreen");
-                    ImPlot::PlotHeatmap("##monthlyTxnHeatmap", heatmapValues.data(), numWeeksInMonth, 7, minAmount, maxAmount, nullptr, lower_left, upper_right);
-                    ImPlot::PopColormap();
-
-                    ImPlot::EndPlot();
-                }
+                //DRAWING THE HEATMAP HERE. MIGHT MISS IT--------------------------------
+                DrawHeatMap(state);
             }
             else
             {

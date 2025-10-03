@@ -2,6 +2,8 @@
 --- 
 
 - [x] ~~Add the Date Picker/ Make a custome one if necessary.~~
+- [x] ~~Add a Heatmap for the Analytics.~~
+- [ ] Add labels and other details for the Heatmap. Basically polish it.
 - [ ] Upgrade the Parser(It is just a kind-of hardcoded rn).
 - [ ] The Plan Expenses Feature. 
 - [x] ~~Add Error-Messages and stuff.~~
