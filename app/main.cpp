@@ -365,11 +365,11 @@ void Card(const char *title, double val, const char *postValTxt = "")
     ImGui::PopStyleVar();
 }
 
-void DrawHeatMap(AppState &state, float scale = 1.0f)
+void DrawHeatMap(AppState &state, float scale = 1.0f, ImVec2 OUTER_MARGIN = ImVec2(40.0f, 50.0f))
 {
     const ImVec2 CELL_SIZE(20.0f * scale, 20.0f * scale);
     const ImVec2 CELL_SPACING(15.0f * scale, 5.0f * scale);
-    const ImVec2 OUTER_MARGIN(40.0f, 50.0f);  
+  
     const float LABEL_MARGIN = 10.0f * scale;
     const float CELL_TEXT_PADDING_X = 4.0f * scale;
     const float CELL_TEXT_PADDING_Y = 2.0f * scale;
@@ -1651,8 +1651,8 @@ int main()
                     ImGui::PopFont();
                 }
                 // DRAWING THE HEATMAP HERE. MIGHT MISS IT--------------------------------
-                //ImGui::SameLine();
-                DrawHeatMap(state, 2.0f);
+                ImGui::SameLine();
+                DrawHeatMap(state, 2.0f, ImVec2(40.0f, 20.0f));
             }
             else
             {
