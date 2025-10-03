@@ -377,7 +377,7 @@ void DrawHeatMap(AppState &state, float scale = 1.0f)
     const char *WEEK_DAYS[7] = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
     const char *WEEK_LABELS[6] = {"Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6"};
 
-    int currMonth = 52024; //getCurrMonthYearInt();
+    int currMonth = getCurrMonthYearInt();
     int year = currMonth % 10000;
     int month = currMonth / 10000;
 
