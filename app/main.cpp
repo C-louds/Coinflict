@@ -365,19 +365,19 @@ void Card(const char *title, double val, const char *postValTxt = "")
     ImGui::PopStyleVar();
 }
 
-void DrawHeatMap(AppState &state)
+void DrawHeatMap(AppState &state, float scale = 1.0f)
 {
-
-    const ImVec2 CELL_SIZE(20.0f, 20.0f);
-    const ImVec2 CELL_SPACING(15.0f, 5.0f);
-    const float LABEL_MARGIN = 20.0f;
-    const float CELL_TEXT_PADDING_X = 4.0f;
-    const float CELL_TEXT_PADDING_Y = 2.0f;
+    const ImVec2 CELL_SIZE(20.0f * scale, 20.0f * scale);
+    const ImVec2 CELL_SPACING(15.0f * scale, 5.0f * scale);
+    const ImVec2 OUTER_MARGIN(40.0f, 50.0f);  
+    const float LABEL_MARGIN = 10.0f * scale;
+    const float CELL_TEXT_PADDING_X = 4.0f * scale;
+    const float CELL_TEXT_PADDING_Y = 2.0f * scale;
 
     const char *WEEK_DAYS[7] = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
     const char *WEEK_LABELS[6] = {"Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6"};
 
-    int currMonth = getCurrMonthYearInt();
+    int currMonth = 52024; //getCurrMonthYearInt();
     int year = currMonth % 10000;
     int month = currMonth / 10000;
 
@@ -424,7 +424,9 @@ void DrawHeatMap(AppState &state)
     };
 
     ImVec2 start = ImGui::GetCursorScreenPos();
-    float labelWidth = ImGui::CalcTextSize("Week 1").x;
+    start.x += OUTER_MARGIN.x;
+    start.y += OUTER_MARGIN.y;
+    float labelWidth = ImGui::CalcTextSize("Week 1").x * scale;
     float labelOffset = labelWidth + LABEL_MARGIN;
 
     ImDrawList *drawList = ImGui::GetWindowDrawList();
@@ -438,7 +440,7 @@ void DrawHeatMap(AppState &state)
     drawList->AddLine(ImVec2(start.x, start.y),
                       ImVec2(start.x + totalWidth, start.y),
                       IM_COL32(255, 255, 255, 255), 1.0f);
-    start.y += 5;
+    start.y += 5 * scale;
 
     for (int j = 0; j < 7; j++)
     {
@@ -451,8 +453,8 @@ void DrawHeatMap(AppState &state)
     for (int week = 0; week < numWeeksInMonth; week++)
     {
         std::vector<int> calWeek = ImGui::CalendarWeek(week + 1, firstDayOfMonth, numDaysInMonth);
-
-        ImVec2 labelPos(start.x, start.y + week * (CELL_SIZE.y + CELL_SPACING.y));
+        ImVec2 weekLabelSize = ImGui::CalcTextSize(WEEK_LABELS[week]);
+        ImVec2 labelPos(start.x, start.y + week * (CELL_SIZE.y + CELL_SPACING.y) + (CELL_SIZE.y - weekLabelSize.y) * 0.5f);
         drawList->AddText(labelPos, IM_COL32(255, 255, 255, 255), WEEK_LABELS[week]);
 
         for (int j = 0; j < 7; j++)
@@ -467,7 +469,7 @@ void DrawHeatMap(AppState &state)
                 double val = txnOfMonth[day - 1];
                 ImU32 color = getColor(val);
 
-                drawList->AddRectFilled(posMin, posMax, color, 4.0f);
+                drawList->AddRectFilled(posMin, posMax, color, 4.0f * scale);
 
                 char buf[4];
                 snprintf(buf, sizeof(buf), "%d", day);
@@ -1649,8 +1651,8 @@ int main()
                     ImGui::PopFont();
                 }
                 // DRAWING THE HEATMAP HERE. MIGHT MISS IT--------------------------------
-                ImGui::SameLine();
-                DrawHeatMap(state);
+                //ImGui::SameLine();
+                DrawHeatMap(state, 2.0f);
             }
             else
             {
