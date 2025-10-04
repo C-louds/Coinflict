@@ -809,7 +809,7 @@ int main()
         DrawBackgroundGradient();
 
         const char *tabs[] = {"Dashboard", "Transactions", "Analytics"};
-        float tabWidth = ImGui::GetContentRegionAvail().x / 6; //ImGui::GetContentRegionAvail().x / IM_ARRAYSIZE(tabs) ;
+        float tabWidth = ImGui::GetContentRegionAvail().x / 6; // ImGui::GetContentRegionAvail().x / IM_ARRAYSIZE(tabs) ;
 
         for (int i = 0; i < 3; i++)
         {
@@ -827,7 +827,7 @@ int main()
 
             static float hoverAnimT[3] = {0.0f, 0.0f, 0.0f};
             float dt = ImGui::GetIO().DeltaTime;
-            float speed = 3.5f;
+            float speed = 4.5f;
             ImVec2 p1 = ImGui::GetItemRectMin();
             ImVec2 p2 = ImGui::GetItemRectMax();
             ImVec2 lineY(p1.x, p2.y);
@@ -886,6 +886,7 @@ int main()
 
             ImGui::SameLine();
             ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 20);
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 12.0f);
             ImGui::PushFont(poppinsRegularLarge);
             // THE PDF SELECTOR FOR THE USER.  (do it manually later instead of the dependencies)
             if (ImGui::Button(ICON_MD_CLOUD_UPLOAD " Upload Statement", ImVec2(ImGui::GetWindowSize().x / 7, 100)))
@@ -899,6 +900,7 @@ int main()
                 state.pendingTransactions.clear();
             }
             ImGui::PopFont();
+            ImGui::PopStyleVar();
 
             std::string invalidPDF = "##invalidPDF";
             if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey", ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize, ImVec2{(800.0f), (600.0f)}))
@@ -1261,6 +1263,8 @@ int main()
             if (!state.isPDFparsed)
             {
                 ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 20);
+                ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 12.0f);
+
                 ImGui::PushFont(poppinsRegularLarge);
 
                 if (ImGui::Button(ICON_MD_ADD_CIRCLE_OUTLINE " New Transaction", ImVec2(ImGui::GetWindowSize().x / 7, 100)))
@@ -1268,6 +1272,7 @@ int main()
                     newTxnPopup = true;
                 }
                 ImGui::PopFont();
+                ImGui::PopStyleVar();
             }
 
             if (newTxnPopup)
@@ -1502,7 +1507,11 @@ int main()
 
             ImGui::EndGroup();
             // Summary row
+            ImGui::Spacing();
+            ImGui::Spacing();
+            ImGui::PushFont(sinterLight);
             ImGui::Text("Last few transaction");
+            ImGui::PopFont();
             ImGui::Separator();
             ImGui::Spacing();
 
