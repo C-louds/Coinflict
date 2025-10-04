@@ -27,7 +27,7 @@
 * **Analytics**: Charts and statistics powered by ImPlot.
 * **PDF Import**: Parse financial statements into structured transaction data.
 * **Date Picker**: Intuitive time-based filtering of data (Yet to implement).
-* Checkout [TODO.md](app/TODO) if interested.
+* Checkout [TODO](app/TODO.md) if interested.
 
 ---
 
