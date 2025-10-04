@@ -345,7 +345,8 @@ void CenterTextInCol(const char *txt, float posX = ImGui::GetCursorPosX(), ImVec
     ImGui::SetCursorPosX(posX);
     ImGui::TextColored(color, "%s", txt);
 }
-void Card(const char *title, double val, const char *preValTxt = "", const char *postValTxt = "", ImFont *poppinsRegularLarge = nullptr)
+
+void Card(const char *title, double val, const char *preValTxt = "", const char *postValTxt = "", ImFont *poppinsRegularLarge = nullptr, ImFont *sinterLight = nullptr)
 {
     ImDrawList *draw_list = ImGui::GetWindowDrawList();
     ImVec2 pos = ImGui::GetCursorScreenPos();
@@ -361,42 +362,46 @@ void Card(const char *title, double val, const char *preValTxt = "", const char 
 
     float rounding = 20.0f;
     float shadowSpread = 5.0f;
-    ImVec2 offset(5.0f, 5.0f);
+    ImVec2 shadowOffset(5.0f, 5.0f);
 
     // --- Draw light glow shadow ---
     draw_list->AddRectFilled(
-        ImVec2(pos.x - shadowSpread + offset.x, pos.y - shadowSpread + offset.y),
-        ImVec2(pos.x + size.x + shadowSpread, pos.y + size.y + shadowSpread),
+        ImVec2(pos.x - shadowSpread + shadowOffset.x + 20, pos.y - shadowSpread + shadowOffset.y),
+        ImVec2(pos.x + size.x + shadowSpread, pos.y + size.y + shadowSpread + 20),
         ImGui::ColorConvertFloat4ToU32(col_shadow),
         rounding + shadowSpread);
 
     // --- Draw main rounded card background ---
     draw_list->AddRectFilled(
-        pos,
-        ImVec2(pos.x + size.x, pos.y + size.y),
+        ImVec2(pos.x, pos.y + 20),
+        ImVec2(pos.x + size.x, pos.y + size.y + 20),
         ImGui::ColorConvertFloat4ToU32(col_surface),
         rounding);
 
     // --- Optional soft border overlay ---
     draw_list->AddRect(
-        pos,
-        ImVec2(pos.x + size.x, pos.y + size.y),
+        ImVec2(pos.x, pos.y + 20),
+        ImVec2(pos.x + size.x, pos.y + size.y + 20),
         ImGui::ColorConvertFloat4ToU32(col_border),
         rounding,
         0,
         1.0f);
 
     // --- Layout inner content manually ---
-    ImGui::SetCursorScreenPos(ImVec2(pos.x + 20, pos.y + 15)); // padding
+    ImGui::SetCursorScreenPos(ImVec2(pos.x + 20, pos.y + 15 + 20)); // padding
 
     ImGui::BeginGroup(); // isolate content
+    ImGui::PushFont(sinterLight);
     ImGui::Text("%s", title);
+    ImGui::PopFont();
+
     // ImGui::Separator();
     ImVec2 innerPos = ImVec2(ImGui::GetCursorPos().x, ImGui::GetCursorPos().y + 1);
     ImGui::SetCursorPosY(innerPos.y);
     draw_list->AddLine(ImVec2(innerPos.x - 15, innerPos.y), ImVec2(pos.x + size.x - 15, innerPos.y), IM_COL32(255, 255, 255, 100), 2.0f);
     innerPos = ImVec2(innerPos.x, innerPos.y + 6);
     ImGui::SetCursorPosY(innerPos.y);
+
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
     ImGui::PushFont(poppinsRegularLarge);
     ImGui::Text("%s", preValTxt);
@@ -411,6 +416,169 @@ void Card(const char *title, double val, const char *preValTxt = "", const char 
     // This reserves the same space for ImGui layout so SameLine() works
     ImGui::SetCursorScreenPos(ImVec2(pos.x, pos.y));
     ImGui::Dummy(ImVec2(size.x + 15.0f, size.y + 15.0f));
+}
+
+void DrawTransactionTable(std::vector<Transaction> &transactions, const char *tableId, ImVec2 size = ImVec2(0, 400), int maxVisibleRows = -1)
+{
+    const float BORDER_RADIUS = 12.0f;
+    const float HEADER_HEIGHT = 40.0f;
+    const float ROW_HEIGHT = 35.0f;
+    const float PADDING = 15.0f;
+
+    if (transactions.empty())
+    {
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.08f, 0.09f, 0.10f, 0.6f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, BORDER_RADIUS);
+        ImGui::BeginChild(tableId, ImVec2(0, 150), true, ImGuiWindowFlags_NoScrollbar);
+
+        ImVec2 textSize = ImGui::CalcTextSize("No transactions found");
+        ImVec2 windowSize = ImGui::GetWindowSize();
+        ImGui::SetCursorPos(ImVec2((windowSize.x - textSize.x) * 0.5f, (windowSize.y - textSize.y) * 0.5f));
+        ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "No transactions found");
+
+        ImGui::EndChild();
+        ImGui::PopStyleVar();
+        ImGui::PopStyleColor();
+        return;
+    }
+
+    // CALCULATE DIMENSONS
+    float tableHeight;
+    if (maxVisibleRows > 0)
+    {
+        // CALCULATE THE HEIGHT BASED ON ROWS ( DON'T WORRY YOU ARE STILL TALLER <3)
+        tableHeight = HEADER_HEIGHT + (maxVisibleRows * ROW_HEIGHT) + PADDING * 2;
+    }
+    else
+    {
+        tableHeight = size.y > 0 ? size.y : 400.0f;
+    }
+    ImVec2 tableSize = ImVec2(size.x > 0 ? size.x : ImGui::GetContentRegionAvail().x, tableHeight);
+    ImVec2 tablePos = ImGui::GetCursorScreenPos();
+
+    ImDrawList *drawList = ImGui::GetWindowDrawList();
+
+    // BG
+    drawList->AddRectFilled(tablePos, ImVec2(tablePos.x + tableSize.x, tablePos.y + tableSize.y),
+                            IM_COL32(20, 22, 26, 200), BORDER_RADIUS);
+
+    // HEADER BG
+    drawList->AddRectFilled(tablePos, ImVec2(tablePos.x + tableSize.x, tablePos.y + HEADER_HEIGHT),
+                            IM_COL32(35, 38, 43, 255), BORDER_RADIUS, ImDrawFlags_RoundCornersTop);
+
+    drawList->AddLine(ImVec2(tablePos.x + PADDING, tablePos.y + HEADER_HEIGHT),
+                      ImVec2(tablePos.x + tableSize.x - PADDING, tablePos.y + HEADER_HEIGHT),
+                      IM_COL32(60, 63, 68, 255), 1.0f);
+
+    float colWidths[] = {tableSize.x * 0.18f, tableSize.x * 0.22f, tableSize.x * 0.30f,
+                         tableSize.x * 0.15f, tableSize.x * 0.15f}; // HAD TO TWEAK WITH MAGIC(NUMBERS)
+    const char *headers[] = {"Date", "Category", "Label", "Amount", "Method"};
+
+    // DRAW THE HEADERS
+    float xOffset = tablePos.x + PADDING;
+    for (int i = 0; i < IM_ARRAYSIZE(colWidths); i++)
+    {
+        ImVec2 textSize = ImGui::CalcTextSize(headers[i]);
+        drawList->AddText(ImVec2(xOffset + (colWidths[i] - textSize.x) * 0.5f,
+                                 tablePos.y + (HEADER_HEIGHT - textSize.y) * 0.5f),
+                          IM_COL32(220, 220, 220, 255), headers[i]);
+        xOffset += colWidths[i];
+    }
+    drawList->AddRectFilled(ImVec2(tablePos.x + PADDING, tablePos.y + HEADER_HEIGHT - 2),
+                            ImVec2(tablePos.x + tableSize.x - PADDING, tablePos.y + HEADER_HEIGHT),
+                            IM_COL32(80, 130, 200, 120));
+
+    // MAKE THE ROWS
+    ImGui::SetCursorScreenPos(ImVec2(tablePos.x + PADDING, tablePos.y + HEADER_HEIGHT + 5));
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0, 0, 0, 0));
+    ImGui::PushStyleColor(ImGuiCol_ScrollbarBg, ImVec4(0.05f, 0.05f, 0.05f, 0.5f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, PADDING));
+    ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, 8.0f);
+
+    char childId[64];
+    snprintf(childId, sizeof(childId), "%s_scroll", tableId);
+
+    float contentHeight = tableSize.y - HEADER_HEIGHT - 5;
+    ImGui::BeginChild(childId, ImVec2(tableSize.x - PADDING * 2, contentHeight), false);
+
+    // YEET IF OUTSIDE THE BOUNDRIES
+    float clipTop = tablePos.y + HEADER_HEIGHT + 5;
+    float clipBottom = tablePos.y + tableSize.y;
+    drawList->PushClipRect(ImVec2(tablePos.x, clipTop), ImVec2(tablePos.x + tableSize.x, clipBottom), true);
+
+    int nRows = (maxVisibleRows > 0) ? maxVisibleRows : transactions.size();
+
+    float totalContentHeight = nRows * ROW_HEIGHT;
+
+    for (int i = 0; i < nRows; i++)
+    {
+        Transaction &txn = transactions[i];
+
+        // CREATING SPACE FOR DA ROWS
+        ImGui::Dummy(ImVec2(tableSize.x - PADDING * 2, ROW_HEIGHT));
+
+        // GET THE POS OF DUMMY
+        ImVec2 itemMin = ImGui::GetItemRectMin();
+        ImVec2 itemMax = ImGui::GetItemRectMax();
+
+        // ROW BG
+        bool isHovered = ImGui::IsItemHovered();
+        ImU32 bgColor = isHovered ? IM_COL32(38, 41, 46, 200) : (i % 2 == 0 ? IM_COL32(20, 22, 25, 100) : IM_COL32(25, 27, 30, 100));
+
+        drawList->AddRectFilled(itemMin, itemMax, bgColor, 0);
+
+        xOffset = itemMin.x;
+
+        // DATES (WISH I HAD ONE)
+        ImVec2 textSize = ImGui::CalcTextSize(txn.date.c_str());
+        drawList->AddText(ImVec2(xOffset + (colWidths[0] - textSize.x) * 0.5f,
+                                 itemMin.y + (ROW_HEIGHT - textSize.y) * 0.5f),
+                          IM_COL32(200, 200, 200, 255), txn.date.c_str());
+        xOffset += colWidths[0];
+
+        // CATEGORY
+        textSize = ImGui::CalcTextSize(txn.category.c_str());
+        drawList->AddText(ImVec2(xOffset + (colWidths[1] - textSize.x) * 0.5f,
+                                 itemMin.y + (ROW_HEIGHT - textSize.y) * 0.5f),
+                          IM_COL32(200, 200, 200, 255), txn.category.c_str());
+        xOffset += colWidths[1];
+
+        // LABEL (STFU WITH "..." IF YAPPING TOO MUCH(TOO LONG WORDS) )
+        std::string label = txn.label;
+        if (label.length() > 25)
+            label = label.substr(0, 22) + "...";
+        textSize = ImGui::CalcTextSize(label.c_str());
+        drawList->AddText(ImVec2(xOffset + (colWidths[2] - textSize.x) * 0.5f,
+                                 itemMin.y + (ROW_HEIGHT - textSize.y) * 0.5f),
+                          IM_COL32(200, 200, 200, 255), label.c_str());
+        xOffset += colWidths[2];
+
+        // AMOUNT (colored)
+        char amountStr[32];
+        snprintf(amountStr, sizeof(amountStr), "%.2f", txn.amount);
+        textSize = ImGui::CalcTextSize(amountStr);
+        ImU32 amountColor = (txn.type == Transaction::TransactionType::Expense) ? IM_COL32(255, 82, 82, 255) : IM_COL32(0, 200, 83, 255);
+        drawList->AddText(ImVec2(xOffset + (colWidths[3] - textSize.x) * 0.5f,
+                                 itemMin.y + (ROW_HEIGHT - textSize.y) * 0.5f),
+                          amountColor, amountStr);
+        xOffset += colWidths[3];
+
+        // METHOD
+        std::string method = Transaction::toString(txn.method);
+        textSize = ImGui::CalcTextSize(method.c_str());
+        drawList->AddText(ImVec2(xOffset + (colWidths[4] - textSize.x) * 0.5f,
+                                 itemMin.y + (ROW_HEIGHT - textSize.y) * 0.5f),
+                          IM_COL32(200, 200, 200, 255), method.c_str());
+    }
+
+    drawList->PopClipRect();
+
+    ImGui::EndChild();
+    ImGui::PopStyleVar(2);
+    ImGui::PopStyleColor(2);
+
+    // Reserve space
+    ImGui::Dummy(tableSize);
 }
 
 void DrawHeatMap(AppState &state, float scale = 1.0f, ImVec2 OUTER_MARGIN = ImVec2(40.0f, 50.0f))
@@ -548,7 +716,7 @@ void DrawHeatMap(AppState &state, float scale = 1.0f, ImVec2 OUTER_MARGIN = ImVe
 bool dashboardOpened = true;
 int windowSizeX = 1920;
 int windowSizeY = 1080;
-Page currPage = Page::Dashboard; // Spawn Point
+Page currPage = Page::Dashboard; // SPAWN POINT
 
 int main()
 {
@@ -580,27 +748,40 @@ int main()
 
     SetupImGuiStyle();
 
+    float baseFontSize = 15.0f; // 13.0f is the size of the default font. Change to the font size you use.
     float fontSize = 18.0f;
     float fontSizeLarge = 22.0f;
+    float iconFontSize = baseFontSize * 2.0f / 3.0f;
     ImGuiIO &io = ImGui::GetIO();
+
     ImFont *poppinsMediumItalic = io.Fonts->AddFontFromFileTTF("../app/lib/assets/Poppins-MediumItalic.ttf", fontSize);
+
     ImFont *poppinsRegularLarge = io.Fonts->AddFontFromFileTTF("../app/lib/assets/Poppins-Regular.ttf", fontSizeLarge);
+
+    {
+        ImFontConfig iconsConfig;
+        static const ImWchar icons_ranges[] = {ICON_MIN_MD, 0xFFFF, 0};
+        iconsConfig.MergeMode = true; // IT WILL MERGE INTO THE LAST LOADED FONT.
+        iconsConfig.PixelSnapH = true;
+        iconsConfig.GlyphMinAdvanceX = iconFontSize;
+        iconsConfig.GlyphOffset = ImVec2(0, 5);
+        io.Fonts->AddFontFromFileTTF("../app/lib/assets/MaterialIcons-Regular.ttf", 18.0f, &iconsConfig, icons_ranges);
+    }
+
+    ImFont *sinterLight = io.Fonts->AddFontFromFileTTF("../app/lib/assets/SinterLight.ttf", baseFontSize);
     ImFont *poppinsRegular = io.Fonts->AddFontFromFileTTF("../app/lib/assets/Poppins-Regular.ttf", fontSize);
 
     io.FontDefault = poppinsRegular;
     (void)io;
-
-    float baseFontSize = 13.0f; // 13.0f is the size of the default font. Change to the font size you use.
-    float iconFontSize = baseFontSize * 2.0f / 3.0f;
-
-    static const ImWchar icons_ranges[] = {ICON_MIN_MD, 0xFFFF, 0};
-    ImFontConfig iconsConfig;
-    iconsConfig.MergeMode = true; // IT WILL MERGE INTO THE LAST LOADED FONT.
-    iconsConfig.PixelSnapH = true;
-    iconsConfig.GlyphMinAdvanceX = iconFontSize;
-    iconsConfig.GlyphOffset = ImVec2(0, 5);
-    io.Fonts->AddFontFromFileTTF("../app/lib/assets/MaterialIcons-Regular.ttf", 18.0f, &iconsConfig, icons_ranges);
-
+    {
+        ImFontConfig iconsConfig;
+        static const ImWchar icons_ranges[] = {ICON_MIN_MD, 0xFFFF, 0};
+        iconsConfig.MergeMode = true; // IT WILL MERGE INTO THE LAST LOADED FONT.
+        iconsConfig.PixelSnapH = true;
+        iconsConfig.GlyphMinAdvanceX = iconFontSize;
+        iconsConfig.GlyphOffset = ImVec2(0, 5);
+        io.Fonts->AddFontFromFileTTF("../app/lib/assets/MaterialIcons-Regular.ttf", 18.0f, &iconsConfig, icons_ranges);
+    }
     // io.Fonts->Build();
 
     ImGui_ImplGlfw_InitForOpenGL(window, true);
@@ -628,7 +809,7 @@ int main()
         DrawBackgroundGradient();
 
         const char *tabs[] = {"Dashboard", "Transactions", "Analytics"};
-        float tabWidth = ImGui::GetContentRegionAvail().x / IM_ARRAYSIZE(tabs);
+        float tabWidth = ImGui::GetContentRegionAvail().x / 6; //ImGui::GetContentRegionAvail().x / IM_ARRAYSIZE(tabs) ;
 
         for (int i = 0; i < 3; i++)
         {
@@ -636,19 +817,21 @@ int main()
             if (i > 0)
                 ImGui::SameLine();
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+            ImGui::PushFont(sinterLight);
             if (ImGui::Button(tabs[i], ImVec2(tabWidth, 0)))
             {
                 currPage = static_cast<Page>(i); // Update current page
             }
+            ImGui::PopFont();
             ImGui::PopStyleColor();
 
             static float hoverAnimT[3] = {0.0f, 0.0f, 0.0f};
             float dt = ImGui::GetIO().DeltaTime;
-            float speed = 3.0f;
+            float speed = 3.5f;
             ImVec2 p1 = ImGui::GetItemRectMin();
             ImVec2 p2 = ImGui::GetItemRectMax();
             ImVec2 lineY(p1.x, p2.y);
-            float inset = 150.0f;
+            float inset = 75.0f;
             float lineHalf = (p2.x - p1.x) / 2.0f - inset;
 
             if (currPage == static_cast<Page>(i))
@@ -693,15 +876,17 @@ int main()
             // --- DASHBOARD WINDOW ---
             ImGui::BeginGroup();
 
-            Card("Total Spent", state.totalSpent, "₹", "", poppinsRegularLarge);
+            Card("Total Spent", state.totalSpent, "₹", "", poppinsRegularLarge, sinterLight);
             ImGui::SameLine();
-            Card("This Month", state.spentThisMonth, "₹", "", poppinsRegularLarge);
+            Card("This Month", state.spentThisMonth, "₹", "", poppinsRegularLarge, sinterLight);
             ImGui::SameLine();
-            Card("Balance", state.balance, "₹", "", poppinsRegularLarge);
+            Card("Balance", state.balance, "₹", "", poppinsRegularLarge, sinterLight);
             ImGui::SameLine();
-            Card("Compared To Last Month", state.comparedToLastMonth, "", "%", poppinsRegularLarge);
+            Card("Compared To Last Month", state.comparedToLastMonth, "", "%", poppinsRegularLarge, sinterLight);
 
             ImGui::SameLine();
+            ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 20);
+            ImGui::PushFont(poppinsRegularLarge);
             // THE PDF SELECTOR FOR THE USER.  (do it manually later instead of the dependencies)
             if (ImGui::Button(ICON_MD_CLOUD_UPLOAD " Upload Statement", ImVec2(ImGui::GetWindowSize().x / 7, 100)))
             {
@@ -713,6 +898,7 @@ int main()
                 ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose a PDF", ".pdf", config);
                 state.pendingTransactions.clear();
             }
+            ImGui::PopFont();
 
             std::string invalidPDF = "##invalidPDF";
             if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey", ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize, ImVec2{(800.0f), (600.0f)}))
@@ -1074,10 +1260,14 @@ int main()
 
             if (!state.isPDFparsed)
             {
+                ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 20);
+                ImGui::PushFont(poppinsRegularLarge);
+
                 if (ImGui::Button(ICON_MD_ADD_CIRCLE_OUTLINE " New Transaction", ImVec2(ImGui::GetWindowSize().x / 7, 100)))
                 {
                     newTxnPopup = true;
                 }
+                ImGui::PopFont();
             }
 
             if (newTxnPopup)
@@ -1329,63 +1519,7 @@ int main()
             else
             {
 
-                if (ImGui::BeginTable("ExpensesTable", 5, ImGuiTableFlags_NoBordersInBody))
-                {
-                    ImGui::TableNextRow();
-                    const char *headers[] = {"Date", "Category", "Label", "Amount", "Method"};
-
-                    for (int col = 0; col < IM_ARRAYSIZE(headers); col++)
-                    {
-                        ImGui::TableSetColumnIndex(col);
-
-                        const char *text = headers[col];
-                        float colWidth = ImGui::GetColumnWidth();
-                        float txtWidth = ImGui::CalcTextSize(text).x;
-                        float offsetX = (colWidth - txtWidth) * 0.5f;
-                        posX[col] = ImGui::GetCursorPosX() + offsetX;
-
-                        ImGui::SetCursorPosX(posX[col]);
-                        ImGui::TableHeader(text);
-                        colAnchor[col] = posX[col] + txtWidth;
-                    }
-
-                    /*ImGui::TableSetupColumn("Category", ImGuiTableColumnFlags_IndentEnable);
-                    ImGui::TableSetupColumn("Amount");
-                    ImGui::TableSetupColumn("Date");
-                    ImGui::TableHeadersRow(); */
-
-                    for (int i = 0; i < 20; i++)
-                    {
-                        float txtWidth;
-                        auto txn = state.transactions[i];
-
-                        ImGui::TableNextRow();
-
-                        ImGui::TableSetColumnIndex(0);
-                        txtWidth = ImGui::CalcTextSize(txn.date.c_str()).x;
-                        CenterTextInCol(txn.date.c_str(), colAnchor[0] - txtWidth);
-
-                        ImGui::TableSetColumnIndex(1);
-                        txtWidth = ImGui::CalcTextSize(txn.category.c_str()).x;
-                        CenterTextInCol(txn.category.c_str(), colAnchor[1] - txtWidth);
-
-                        ImGui::TableSetColumnIndex(2);
-                        txtWidth = ImGui::CalcTextSize(txn.label.c_str()).x;
-                        CenterTextInCol(txn.label.c_str(), colAnchor[2] - txtWidth);
-
-                        ImGui::TableSetColumnIndex(3);
-                        std::string strAmt = std::format("{:.2f}", txn.amount);
-                        ImVec4 amountColor = (txn.type == Transaction::TransactionType::Expense) ? ImVec4(1.000f, 0.322f, 0.322f, 1.0f) : ImVec4(0.000f, 0.784f, 0.325f, 1.0f);
-                        txtWidth = ImGui::CalcTextSize(strAmt.c_str()).x;
-                        CenterTextInCol(strAmt.c_str(), colAnchor[3] - txtWidth, amountColor);
-
-                        ImGui::TableSetColumnIndex(4);
-                        std::string strMethod = Transaction::toString(txn.method);
-                        txtWidth = ImGui::CalcTextSize(strMethod.c_str()).x;
-                        CenterTextInCol(strMethod.c_str(), colAnchor[4] - txtWidth);
-                    }
-                    ImGui::EndTable();
-                }
+                DrawTransactionTable(state.transactions, "Recent Transactions", ImVec2(0, 700), 20);
             }
             ImGui::Separator();
 
@@ -1410,60 +1544,7 @@ int main()
                 }
                 else
                 {
-                    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-                    if (ImGui::BeginTable("RecentTransactions", 5, ImGuiTableFlags_NoBordersInBody | ImGuiTableFlags_ScrollY))
-                    {
-                        ImGui::TableNextRow();
-                        const char *headers[] = {"Date", "Category", "Label", "Amount", "Method"}; // TODO: FIX THIS AND MAKEIT BETTER. PROPER FORMATING AND SHOW ALL INFO. THAT IS FOR OTHER TBLES TOO.
-                        static float posX[5];
-                        static float colAnchor[5];
-                        for (int col = 0; col < IM_ARRAYSIZE(headers); col++)
-                        {
-                            ImGui::TableSetColumnIndex(col);
-
-                            const char *text = headers[col];
-                            float colWidth = ImGui::GetColumnWidth();
-                            float txtWidth = ImGui::CalcTextSize(text).x;
-                            float offsetX = (colWidth - txtWidth) * 0.5f;
-                            posX[col] = ImGui::GetCursorPosX() + offsetX;
-
-                            ImGui::SetCursorPosX(posX[col]);
-                            ImGui::TableHeader(text);
-                            colAnchor[col] = posX[col] + txtWidth;
-                        }
-
-                        for (auto &t : state.transactions)
-                        {
-                            float txtWidth;
-
-                            ImGui::TableNextRow();
-                            ImGui::TableSetColumnIndex(0);
-                            txtWidth = ImGui::CalcTextSize(t.date.c_str()).x;
-                            CenterTextInCol(t.date.c_str(), colAnchor[0] - txtWidth);
-
-                            ImGui::TableSetColumnIndex(1);
-                            txtWidth = ImGui::CalcTextSize(t.category.c_str()).x;
-                            CenterTextInCol(t.category.c_str(), colAnchor[1] - txtWidth);
-
-                            ImGui::TableSetColumnIndex(2);
-                            txtWidth = ImGui::CalcTextSize(t.label.c_str()).x;
-                            CenterTextInCol(t.label.c_str(), colAnchor[2] - txtWidth);
-
-                            ImGui::TableSetColumnIndex(3);
-                            std::string strAmt = std::format("{:.2f}", t.amount);
-                            ImVec4 amountColor = (t.type == Transaction::TransactionType::Expense) ? ImVec4(1.000f, 0.322f, 0.322f, 1.0f) : ImVec4(0.000f, 0.784f, 0.325f, 1.0f);
-                            txtWidth = ImGui::CalcTextSize(strAmt.c_str()).x;
-                            CenterTextInCol(strAmt.c_str(), colAnchor[3] - txtWidth, amountColor);
-
-                            ImGui::TableSetColumnIndex(4);
-                            std::string strMethod = Transaction::toString(t.method);
-                            txtWidth = ImGui::CalcTextSize(strMethod.c_str()).x;
-                            CenterTextInCol(strMethod.c_str(), colAnchor[4] - txtWidth);
-                        }
-
-                        ImGui::EndTable();
-                    }
-                    ImGui::PopStyleColor();
+                    DrawTransactionTable(state.transactions, "TransactionsTable", ImVec2(0, ImGui::GetContentRegionAvail().y - 20));
                 }
 
                 ImGui::EndTabItem();
@@ -1536,44 +1617,7 @@ int main()
                 }
                 else
                 {
-                    if (ImGui::BeginTable("##searchRes", 6))
-                    {
-                        ImGui::TableSetupColumn("Category");
-                        ImGui::TableSetupColumn("Label");
-                        ImGui::TableSetupColumn("Amount");
-                        ImGui::TableSetupColumn("Method");
-                        ImGui::TableSetupColumn("Date");
-                        ImGui::TableSetupColumn("Type");
-
-                        ImGui::TableHeadersRow();
-
-                        for (auto &t : state.searchTransactions)
-                        {
-                            ImVec4 amtColor = (t.type == Transaction::TransactionType::Expense) ? ImVec4(1.0f, 0.0f, 0.0f, 1.0f) : ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
-
-                            ImGui::TableNextRow();
-
-                            ImGui::TableSetColumnIndex(0);
-                            ImGui::Text("%s", t.category.c_str());
-
-                            ImGui::TableSetColumnIndex(1);
-                            ImGui::Text("%s", t.label.c_str());
-
-                            ImGui::TableSetColumnIndex(2);
-                            ImGui::TextColored(amtColor, "%.2f", t.amount);
-
-                            ImGui::TableSetColumnIndex(3);
-                            ImGui::Text("%s", Transaction::toString(t.method).c_str());
-
-                            ImGui::TableSetColumnIndex(4);
-                            ImGui::Text("%s", t.date.c_str());
-
-                            ImGui::TableSetColumnIndex(5);
-                            ImGui::Text("%s", Transaction::toString(t.type).c_str());
-                        }
-
-                        ImGui::EndTable();
-                    }
+                    DrawTransactionTable(state.searchTransactions, "Search Results", ImVec2(0, ImGui::GetContentRegionAvail().y - 50));
                 }
 
                 ImGui::EndTabItem();
@@ -1649,14 +1693,15 @@ int main()
 
                 ImPlot::PopStyleVar();
 
-                    ImGui::SameLine();
+                ImGui::SameLine();
 
                 float spacing = ImGui::GetStyle().ItemSpacing.x;
-                if ((ImGui::GetContentRegionAvail().x - ImGui::GetScrollX() ) < (600.0f + 80.0f + spacing))
+                if ((ImGui::GetContentRegionAvail().x - ImGui::GetScrollX()) < (600.0f + 80.0f + spacing))
                 {
                     ImGui::NewLine();
                 }
-                else {
+                else
+                {
                     ImGui::SameLine();
                 }
 

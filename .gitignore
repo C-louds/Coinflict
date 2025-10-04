@@ -33,3 +33,6 @@ cmake_install.cmake
 
 #zips
 *.zip
+
+#random files
+app/lib/assets/colorPallet.txt

@@ -1,3 +1,18 @@
+
+
+
+Fonts:
+
+Manifold
+
+Sinter
+
+
+
+
+
+
+
 Primary UI Colors
 
 Background (Dark Gray): #1C1C1E
