@@ -3,7 +3,7 @@
 
 - [x] ~~Add the Date Picker/ Make a custome one if necessary.~~
 - [x] ~~Add a Heatmap for the Analytics.~~
-- [ ] Add labels and other details for the Heatmap. Basically polish it.
+- [x] ~~Add labels and other details for the Heatmap. Basically polish it.~~
 - [ ] Upgrade the Parser(It is just a kind-of hardcoded rn).
 - [ ] The Plan Expenses Feature. 
 - [x] ~~Add Error-Messages and stuff.~~
@@ -15,7 +15,7 @@
 - [x] ~~Make the UI better(try the Color-Pallet)~~
 - [ ] Add more analysis to the Analytics Page.
 - [ ] Add the "Ease of Life" features.
-- [ ] Make DB more Dynamic(Use DB-Transactions before pusing).
+- [ ] Make DB more Dynamic(Use DB-Transactions before pushing).
 - [ ] Optimize DB.
 - [ ] Multi-Wallets adaptive.
 - [ ] Encryption maybe??

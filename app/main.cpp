@@ -242,8 +242,8 @@ void SetupImGuiStyle()
 
     style.Colors[ImGuiCol_Text] = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
     style.Colors[ImGuiCol_TextDisabled] = ImVec4(0.2745098173618317f, 0.3176470696926117f, 0.4509803950786591f, 1.0f);
-    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.0f, 0.0f, 0.0f, 1.0f); // ImVec4(0.0784313753247261f, 0.08627451211214066f, 0.1019607856869698f, 1.0f);
-    style.Colors[ImGuiCol_ChildBg] = ImVec4(0.0784313753247261f, 0.08627451211214066f, 0.1019607856869698f, 1.0f);
+    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.017647059f, 0.025490196f, 0.017647059f, 1.00f); // ImVec4(0.0784313753247261f, 0.08627451211214066f, 0.1019607856869698f, 1.0f);
+    style.Colors[ImGuiCol_ChildBg] = ImVec4(0.12f, 0.12f, 0.12f, 1.00f);                       // ImVec4(0.0784313753247261f, 0.08627451211214066f, 0.1019607856869698f, 1.0f);
     style.Colors[ImGuiCol_PopupBg] = ImVec4(0.0784313753247261f, 0.08627451211214066f, 0.1019607856869698f, 1.0f);
     style.Colors[ImGuiCol_Border] = ImVec4(0.1568627506494522f, 0.168627455830574f, 0.1921568661928177f, 1.0f);
     style.Colors[ImGuiCol_BorderShadow] = ImVec4(0.0784313753247261f, 0.08627451211214066f, 0.1019607856869698f, 1.0f);
@@ -345,31 +345,79 @@ void CenterTextInCol(const char *txt, float posX = ImGui::GetCursorPosX(), ImVec
     ImGui::SetCursorPosX(posX);
     ImGui::TextColored(color, "%s", txt);
 }
-
-void Card(const char *title, double val, const char *postValTxt = "")
+void Card(const char *title, double val, const char *preValTxt = "", const char *postValTxt = "", ImFont *poppinsRegularLarge = nullptr)
 {
-    float x = ImGui::GetWindowSize().x / 7;
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 30.0f);
-    ImGui::BeginChild(title, ImVec2(x, 100), true);
+    ImDrawList *draw_list = ImGui::GetWindowDrawList();
+    ImVec2 pos = ImGui::GetCursorScreenPos();
 
+    float cardWidth = ImGui::GetWindowSize().x / 7;
+    float cardHeight = 100.0f;
+    ImVec2 size(cardWidth, cardHeight);
+
+    // Colors tuned for contrast on black background
+    ImVec4 col_surface = ImVec4(0.10f, 0.10f, 0.12f, 1.00f); // card surface (dark grey)
+    ImVec4 col_shadow = ImVec4(0.00f, 0.00f, 0.00f, 0.40f);  // light outer glow
+    ImVec4 col_border = ImVec4(1.00f, 1.00f, 1.00f, 0.06f);  // soft border
+
+    float rounding = 20.0f;
+    float shadowSpread = 5.0f;
+    ImVec2 offset(5.0f, 5.0f);
+
+    // --- Draw light glow shadow ---
+    draw_list->AddRectFilled(
+        ImVec2(pos.x - shadowSpread + offset.x, pos.y - shadowSpread + offset.y),
+        ImVec2(pos.x + size.x + shadowSpread, pos.y + size.y + shadowSpread),
+        ImGui::ColorConvertFloat4ToU32(col_shadow),
+        rounding + shadowSpread);
+
+    // --- Draw main rounded card background ---
+    draw_list->AddRectFilled(
+        pos,
+        ImVec2(pos.x + size.x, pos.y + size.y),
+        ImGui::ColorConvertFloat4ToU32(col_surface),
+        rounding);
+
+    // --- Optional soft border overlay ---
+    draw_list->AddRect(
+        pos,
+        ImVec2(pos.x + size.x, pos.y + size.y),
+        ImGui::ColorConvertFloat4ToU32(col_border),
+        rounding,
+        0,
+        1.0f);
+
+    // --- Layout inner content manually ---
+    ImGui::SetCursorScreenPos(ImVec2(pos.x + 20, pos.y + 15)); // padding
+
+    ImGui::BeginGroup(); // isolate content
     ImGui::Text("%s", title);
-    ImGui::Separator();
-    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10);
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.2f, 0.2f, 1.0f));
+    // ImGui::Separator();
+    ImVec2 innerPos = ImVec2(ImGui::GetCursorPos().x, ImGui::GetCursorPos().y + 1);
+    ImGui::SetCursorPosY(innerPos.y);
+    draw_list->AddLine(ImVec2(innerPos.x - 15, innerPos.y), ImVec2(pos.x + size.x - 15, innerPos.y), IM_COL32(255, 255, 255, 100), 2.0f);
+    innerPos = ImVec2(innerPos.x, innerPos.y + 6);
+    ImGui::SetCursorPosY(innerPos.y);
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
+    ImGui::PushFont(poppinsRegularLarge);
+    ImGui::Text("%s", preValTxt);
+    ImGui::SameLine(12.0f);
     ImGui::Text("%.2f", val);
-    ImGui::SameLine();
+    ImGui::SameLine(ImGui::CalcTextSize(std::to_string(val).c_str()).x - 25.0f);
     ImGui::Text("%s", postValTxt);
+    ImGui::PopFont();
     ImGui::PopStyleColor();
-    ImGui::EndChild();
+    ImGui::EndGroup();
 
-    ImGui::PopStyleVar();
+    // This reserves the same space for ImGui layout so SameLine() works
+    ImGui::SetCursorScreenPos(ImVec2(pos.x, pos.y));
+    ImGui::Dummy(ImVec2(size.x + 15.0f, size.y + 15.0f));
 }
 
 void DrawHeatMap(AppState &state, float scale = 1.0f, ImVec2 OUTER_MARGIN = ImVec2(40.0f, 50.0f))
 {
     const ImVec2 CELL_SIZE(20.0f * scale, 20.0f * scale);
     const ImVec2 CELL_SPACING(15.0f * scale, 5.0f * scale);
-  
+
     const float LABEL_MARGIN = 10.0f * scale;
     const float CELL_TEXT_PADDING_X = 4.0f * scale;
     const float CELL_TEXT_PADDING_Y = 2.0f * scale;
@@ -416,23 +464,28 @@ void DrawHeatMap(AppState &state, float scale = 1.0f, ImVec2 OUTER_MARGIN = ImVe
     // COLOR LEVELS IN CASE YOU FORGET(white -> light red -> deep red), THERE MORE THAN 1 RED APPRENTLY
     auto getColor = [&](double v)
     {
-        double t = normalize(v); 
+        double t = normalize(v);
         int r = 255;
         int g = (int)(255 * (1.0 - t));
         int b = (int)(255 * (1.0 - t));
         return IM_COL32(r, g, b, 255);
     };
 
+    float labelWidth = ImGui::CalcTextSize("Week 1").x * scale;
+    float labelOffset = labelWidth + LABEL_MARGIN;
+    float totalWidth = labelOffset + 7 * (CELL_SIZE.x + CELL_SPACING.x);
+    if ((ImGui::GetContentRegionAvail().x - ImGui::GetScrollX()) < (totalWidth + 30.0f))
+    {
+        ImGui::NewLine();
+    }
+
     ImVec2 start = ImGui::GetCursorScreenPos();
     start.x += OUTER_MARGIN.x;
     start.y += OUTER_MARGIN.y;
-    float labelWidth = ImGui::CalcTextSize("Week 1").x * scale;
-    float labelOffset = labelWidth + LABEL_MARGIN;
 
     ImDrawList *drawList = ImGui::GetWindowDrawList();
 
     std::string header = "Monthly Spendings Heatmap";
-    float totalWidth = labelOffset + 7 * (CELL_SIZE.x + CELL_SPACING.x);
     float headerX = start.x + (totalWidth - ImGui::CalcTextSize(header.c_str()).x) * 0.5f;
     drawList->AddText(ImVec2(headerX, start.y), IM_COL32(255, 255, 255, 255), header.c_str());
 
@@ -528,8 +581,10 @@ int main()
     SetupImGuiStyle();
 
     float fontSize = 18.0f;
+    float fontSizeLarge = 22.0f;
     ImGuiIO &io = ImGui::GetIO();
     ImFont *poppinsMediumItalic = io.Fonts->AddFontFromFileTTF("../app/lib/assets/Poppins-MediumItalic.ttf", fontSize);
+    ImFont *poppinsRegularLarge = io.Fonts->AddFontFromFileTTF("../app/lib/assets/Poppins-Regular.ttf", fontSizeLarge);
     ImFont *poppinsRegular = io.Fonts->AddFontFromFileTTF("../app/lib/assets/Poppins-Regular.ttf", fontSize);
 
     io.FontDefault = poppinsRegular;
@@ -609,17 +664,6 @@ int main()
                 hoverAnimT[i] += dt * speed;
                 if (hoverAnimT[i] > 1.0f)
                     hoverAnimT[i] = 1.0f;
-                /*ImDrawList *draw_list = ImGui::GetWindowDrawList();
-                ImVec2 pos = ImGui::GetItemRectMin();
-                ImVec2 size = ImGui::GetItemRectSize();
-                ImVec2 p1 = ImGui::GetItemRectMin();
-                ImVec2 p2 = ImGui::GetItemRectMax();
-
-
-                ImVec2 lineStart(p1.x, p2.y); // Bottom-left
-                ImVec2 lineEnd(p2.x, p2.y);   // Bottom-right
-
-                draw_list->AddLine(lineStart, lineEnd, IM_COL32(255, 255, 255, 255), 1.0f); */
             }
             else
             {
@@ -649,13 +693,13 @@ int main()
             // --- DASHBOARD WINDOW ---
             ImGui::BeginGroup();
 
-            Card("Total Spent", state.totalSpent);
+            Card("Total Spent", state.totalSpent, "₹", "", poppinsRegularLarge);
             ImGui::SameLine();
-            Card("This Month", state.spentThisMonth);
+            Card("This Month", state.spentThisMonth, "₹", "", poppinsRegularLarge);
             ImGui::SameLine();
-            Card("Balance", state.balance);
+            Card("Balance", state.balance, "₹", "", poppinsRegularLarge);
             ImGui::SameLine();
-            Card("Compared To Last Month", state.comparedToLastMonth, "%");
+            Card("Compared To Last Month", state.comparedToLastMonth, "", "%", poppinsRegularLarge);
 
             ImGui::SameLine();
             // THE PDF SELECTOR FOR THE USER.  (do it manually later instead of the dependencies)
@@ -1273,7 +1317,6 @@ int main()
             ImGui::Spacing();
 
             loadTransactionsData(state);
-            ImGui::Text("Expenses");
             static float posX[5];
             static float colAnchor[5];
 
@@ -1285,6 +1328,7 @@ int main()
             }
             else
             {
+
                 if (ImGui::BeginTable("ExpensesTable", 5, ImGuiTableFlags_NoBordersInBody))
                 {
                     ImGui::TableNextRow();
@@ -1569,7 +1613,13 @@ int main()
 
                 ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(30, 30));
 
-                if (ImPlot::BeginPlot("Expenses by Category", ImVec2(600, 400), ImPlotFlags_NoFrame | ImPlotFlags_NoLegend))
+                ImVec2 chartSize(0.0f, 400.0f);
+                for (auto c : catVec)
+                {
+                    chartSize.x += ImGui::CalcTextSize(c.c_str()).x * 1.5f;
+                }
+
+                if (ImPlot::BeginPlot("Expenses by Category", chartSize, ImPlotFlags_NoFrame | ImPlotFlags_NoLegend))
                 {
 
                     std::vector<const char *> labels;
@@ -1599,7 +1649,16 @@ int main()
 
                 ImPlot::PopStyleVar();
 
-                ImGui::SameLine();
+                    ImGui::SameLine();
+
+                float spacing = ImGui::GetStyle().ItemSpacing.x;
+                if ((ImGui::GetContentRegionAvail().x - ImGui::GetScrollX() ) < (600.0f + 80.0f + spacing))
+                {
+                    ImGui::NewLine();
+                }
+                else {
+                    ImGui::SameLine();
+                }
 
                 ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(30, 30));
 
@@ -1647,12 +1706,13 @@ int main()
                 else
                 {
                     ImGui::PushFont(poppinsMediumItalic);
-                    ImGui::TextColored(ImVec4(1.0f, 0.522f, 0.522f, 1.0f), "%s", "No expenses recorded.");
+                    ImGui::TextColored(ImVec4(1.0f, 0.522f, 0.522f, 1.0f), "%s", "Failed to load the Line-chart.");
                     ImGui::PopFont();
                 }
+
                 // DRAWING THE HEATMAP HERE. MIGHT MISS IT--------------------------------
-                ImGui::SameLine();
-                DrawHeatMap(state, 2.0f, ImVec2(40.0f, 20.0f));
+
+                DrawHeatMap(state, 1.5f, ImVec2(40.0f, 20.0f));
             }
             else
             {
